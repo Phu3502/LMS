@@ -12,18 +12,24 @@ export const signIn = async (email: string, password: string) => {
         return { success: true , message: "Đăng nhập thành công"};
     } catch (error) {
         const e = error as Error;
-        return { success: false, message: { error: e.message || "Đã xảy ra lỗi" }};
+        return { success: false, message: e.message || "Đã xảy ra lỗi" };
     }
 }
 
-export const signUp = async () => {
+export const signUp = async (email: string, password: string, username: string) => {
+    try {
     await auth.api.signUpEmail({
         body: {
-            email: "ngophu02.lv@gmail.com",
-            password: "1234abcd",
-            name: "Admin"
+            email,
+            password,
+            name: username,
         }
     })
+    return { success: true, message: "Đăng ký thành công" };
+} catch (error) {
+    const e = error as Error;
+    return { success: false, message: e.message || "Đã xảy ra lỗi" };
+}
 }
 
 // export { signUp, signIn };
