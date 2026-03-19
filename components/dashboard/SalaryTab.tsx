@@ -96,7 +96,7 @@ export default function SalaryTab() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg">
           <p className="text-emerald-100 text-sm mb-1">Tổng lương đã duyệt</p>
           <p className="text-3xl font-bold">{new Intl.NumberFormat('vi-VN').format(totalApproved)} ₫</p>
@@ -117,7 +117,7 @@ export default function SalaryTab() {
             <span>{pendingSessions} buổi chờ duyệt</span>
           </div>
         </div>
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg">
+        {/* <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg">
           <p className="text-blue-100 text-sm mb-1">Đã thanh toán</p>
           <p className="text-3xl font-bold">{new Intl.NumberFormat('vi-VN').format(totalPaid)} ₫</p>
           <div className="mt-4 flex items-center gap-2 text-blue-100 text-sm">
@@ -126,7 +126,7 @@ export default function SalaryTab() {
             </svg>
             <span>{paidSessions} buổi đã thanh toán</span>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Bảng chi tiết lương */}

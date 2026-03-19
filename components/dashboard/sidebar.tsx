@@ -1,6 +1,7 @@
 // components/dashboard/Sidebar.tsx
 'use client';
 
+import { authClient } from '@/lib/auth-client';
 import { useState } from 'react';
 
 interface SidebarProps {
@@ -9,6 +10,8 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+  const { data: session, isPending } = authClient.useSession();
+  const user = session?.user;
   return (
     <aside className="w-64 gradient-bg flex flex-col flex-shrink-0">
       {/* Logo */}
@@ -19,7 +22,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           </div>
           <div>
             <h1 className="text-white font-bold text-lg">Coremath Academy</h1>
-            <p className="text-blue-200 text-xs">Teacher Portal</p>
+            <p className="text-blue-200 text-xs">Cổng thông tin giáo viên</p>
           </div>
         </div>
       </div>
@@ -32,7 +35,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               <span className="text-white font-bold text-lg">GV</span>
             </div>
             <div>
-              <p className="text-white font-semibold">Giáo Viên</p>
+              <p className="text-white font-semibold">{isPending ? "Loading..." : user?.name || "Giáo viên"}</p>
               <p className="text-blue-200 text-xs">Chào mừng trở lại!</p>
             </div>
           </div>
@@ -69,7 +72,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       <div className="p-4 border-t border-white/10">
         <div className="glass-effect rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-blue-200 text-xs">Buổi dạy tháng này</span>
+            <span className="text-blue-200 text-xs">Số buổi đã dạy tháng này</span>
             <span className="text-white font-bold">0</span>
           </div>
           <div className="w-full bg-white/20 rounded-full h-2">

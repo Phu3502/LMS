@@ -13,8 +13,11 @@ export function Logout() {
         router.push("/login");
     };
     return (
-        <Button onClick={handleLogout} variant="outline">
-            Đăng xuất <LogOut className="size-4" />
+        <Button
+        onClick={handleLogout}
+        className="gradient-bg text-white hover:brightness-110 hover:scale-[1.03] transition-all shadow-md hover:shadow-lg"
+        >
+        Đăng xuất <LogOut className="size-4 ml-2" />
         </Button>
     );
 }
