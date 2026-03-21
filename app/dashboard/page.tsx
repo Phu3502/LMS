@@ -1,25 +1,18 @@
-// app/dashboard/page.tsx
-'use client';
+import { auth } from "@/lib/auth"
+import { headers } from "next/headers"
+import { getTeacherClasses } from "@/lib/queries/getTeacherClasses"
+import DashboardClient from "./dashboardClient"
 
-import { useState } from 'react';
-import DashboardTab from '@/components/dashboard/DashboardTab';
-import CalendarTab from '@/components/dashboard/CalendarTab';
-import AttendanceTab from '@/components/dashboard/AttendanceTab';
-import SalaryTab from '@/components/dashboard/SalaryTab';
-import Sidebar from '@/components/dashboard/sidebar';
+export default async function DashboardPage() {
 
-export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
 
-  return (
-    <div className="flex h-screen">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="flex-1 overflow-auto bg-slate-50">
-        {activeTab === 'dashboard' && <DashboardTab />}
-        {activeTab === 'calendar' && <CalendarTab />}
-        {activeTab === 'attendance' && <AttendanceTab />}
-        {activeTab === 'salary' && <SalaryTab />}
-      </main>
-    </div>
-  );
+  if (!session) {
+    return <div>Chưa đăng nhập</div>
+  }
+
+  const classes = await getTeacherClasses(session.user.id)
+  return <DashboardClient classes={classes} />
 }
