@@ -8,6 +8,13 @@
       "when": 1773342548708,
       "tag": "0000_careful_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774114519051,
+      "tag": "0001_smart_peter_quill",
+      "breakpoints": true
     }
   ]
 }

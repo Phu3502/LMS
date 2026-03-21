@@ -120,11 +120,11 @@ export const classes = pgTable("classes", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
 
-  weekday: text("weekday").notNull(), 
-  // ví dụ: "Mon", "Tue", "Wed"
+  weekday: text("weekday").notNull(),
+  time: text("time").notNull(),
 
-  time: text("time").notNull(), 
-  // ví dụ: "18:00-19:30"
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

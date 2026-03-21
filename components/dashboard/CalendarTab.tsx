@@ -1,208 +1,162 @@
-// components/dashboard/CalendarTab.tsx
-'use client';
+"use client";
 
-import { useState } from 'react';
-import EventModal from './EventModal';
+import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// Mock classes data (giống ở DashboardTab để đồng bộ)
-const mockClasses = [
-  {
-    __backendId: '1',
-    class_id: 'MATH101',
-    class_name: 'Toán 10',
-    total_sessions: 24,
-    completed_sessions: 12,
-    rate_per_session: 300000,
-    schedule: 'T3, T5, T7 - 19:00',
-    color: '#3b82f6',
-  },
-  {
-    __backendId: '2',
-    class_id: 'PHY201',
-    class_name: 'Vật lý 11',
-    total_sessions: 30,
-    completed_sessions: 20,
-    rate_per_session: 350000,
-    schedule: 'T2, T4, T6 - 18:30',
-    color: '#10b981',
-  },
-];
+function getColorById(id: string) {
+  const colors = [
+    "bg-yellow-500",
+    "bg-green-500",
+    "bg-purple-500",
+    "bg-red-500",
+    "bg-orange-500",
+  ];
 
-export default function CalendarTab() {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return colors[Math.abs(hash) % colors.length];
+}
+
+type ClassType = {
+  id: string;
+  name: string;
+  weekday: string;
+  time: string;
+  startDate: Date | string;
+  endDate: Date | string;
+};
+
+type Props = {
+  classes: ClassType[];
+};
+
+export default function CalendarTab({ classes }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<'month' | 'week' | 'day'>('month');
-  const [selectedEvent, setSelectedEvent] = useState<{ classId: string; dateStr: string } | null>(null);
-  const [showEventModal, setShowEventModal] = useState(false);
 
-  const classes = mockClasses; // sau này thay bằng useDashboard()
+  const month = currentDate.getMonth();
+  const year = currentDate.getFullYear();
 
-  const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-    'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
-
-  const handlePrev = () => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() - 1);
-    setCurrentDate(newDate);
+  const weekdayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
   };
 
-  const handleNext = () => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() + 1);
-    setCurrentDate(newDate);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+
+  const prevMonth = () => {
+    setCurrentDate(new Date(year, month - 1, 1));
   };
 
-  const openEventModal = (classId: string, dateStr: string) => {
-    setSelectedEvent({ classId, dateStr });
-    setShowEventModal(true);
+  const nextMonth = () => {
+    setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  const closeEventModal = () => {
-    setShowEventModal(false);
-    setSelectedEvent(null);
-  };
+  const renderCells = () => {
+    const cells = [];
 
-  // Tạo lịch đơn giản (chỉ hiển thị các ô, bạn có thể cải tiến sau)
-  const renderCalendarCells = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = new Date();
-
-    let cells = [];
-    // Ô trống đầu tháng
-    for (let i = 0; i < firstDay; i++) {
-      cells.push(<div key={`empty-${i}`} className="calendar-cell border border-slate-100 bg-slate-50/50 p-2" />);
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      cells.push(<div key={`empty-${i}`} />);
     }
 
-    // Các ngày trong tháng
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
-      const dayOfWeek = new Date(year, month, day).getDay();
-      const isSunday = dayOfWeek === 0;
+      const today = new Date();
+      const current = new Date(year, month, day);
+      const dayOfWeek = current.getDay();
+      const isToday =
+        day === today.getDate() &&
+        month === today.getMonth() &&
+        year === today.getFullYear();
 
-      // Tìm sự kiện theo lịch cố định (giả lập: các lớp có schedule chứa thứ)
-      const dayMap: { [key: number]: string } = { 0: 'cn', 1: 't2', 2: 't3', 3: 't4', 4: 't5', 5: 't6', 6: 't7' };
-      const events = classes.filter(cls =>
-        cls.schedule.toLowerCase().includes(dayMap[dayOfWeek])
-      );
+      const events = classes.filter((cls) => {
+        if (!cls.weekday || !cls.startDate || !cls.endDate) return false;
+
+        const classDay = weekdayMap[cls.weekday];
+        if (classDay !== dayOfWeek) return false;
+
+        const start = new Date(cls.startDate);
+        const end = new Date(cls.endDate);
+
+        return current >= start && current <= end;
+      });
 
       cells.push(
         <div
           key={day}
-          className={`calendar-cell border border-slate-100 p-2 ${isToday ? 'bg-blue-50' : 'bg-white'} hover:bg-slate-50 transition-colors`}
+          className={`min-h-[100px] border rounded-lg p-2 ${
+            isToday ? "bg-blue-500 text-white" : "bg-white"
+          }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span
-              className={`text-sm font-medium ${isSunday ? 'text-red-500' : 'text-slate-700'} ${
-                isToday ? 'bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center' : ''
-              }`}
-            >
-              {day}
-            </span>
-          </div>
-          <div className="space-y-1">
-            {events.map(cls => {
-              const remaining = cls.total_sessions - cls.completed_sessions;
-              return (
-                <div
-                  key={cls.__backendId}
-                  className="event-pill text-white truncate"
-                  style={{ background: cls.color }}
-                  onClick={() => openEventModal(cls.__backendId, dateStr)}
-                >
-                  {cls.class_id} ({remaining})
-                </div>
-              );
-            })}
+          <div className={`text-sm font-medium ${isToday ? "text-white" : ""}`}>{day}</div>
+
+          <div className="mt-2 flex flex-col gap-1">
+            {events.map((cls) => (
+              <div
+                key={cls.id}
+                className={`text-xs px-2 py-1 rounded text-white ${getColorById(cls.id)}`}
+              >
+                {cls.name} ({cls.time})
+              </div>
+            ))}
           </div>
         </div>
       );
-    }
-
-    // Ô trống cuối tháng
-    const totalCells = firstDay + daysInMonth;
-    const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-    for (let i = 0; i < remainingCells; i++) {
-      cells.push(<div key={`empty-end-${i}`} className="calendar-cell border border-slate-100 bg-slate-50/50 p-2" />);
     }
 
     return cells;
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Lịch dạy cá nhân</h2>
-          <p className="text-slate-500 mt-1">Xem lịch và quản lý các buổi học</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-white rounded-xl p-1 shadow">
-            {(['month', 'week', 'day'] as const).map(v => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  view === v ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {v === 'month' ? 'Tháng' : v === 'week' ? 'Tuần' : 'Ngày'}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Điều hướng tháng */}
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={handlePrev} className="p-2 rounded-xl hover:bg-slate-200 transition-colors">
-          <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-4 text-zinc-700">
+        <button onClick={prevMonth}>
+          <ChevronLeft />
         </button>
-        <h3 className="text-xl font-bold text-slate-800">
-          {monthNames[currentDate.getMonth()]}, {currentDate.getFullYear()}
-        </h3>
-        <button onClick={handleNext} className="p-2 rounded-xl hover:bg-slate-200 transition-colors">
-          <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-          </svg>
+
+        <h2 className="font-semibold text-lg text-zinc-700">
+          {currentDate.toLocaleString("vi-VN", {
+            month: "long",
+            year: "numeric",
+          })}
+        </h2>
+
+        <button onClick={nextMonth}>
+          <ChevronRight />
         </button>
       </div>
 
-      {/* Grid lịch */}
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-        {/* Tiêu đề các ngày */}
-        <div className="grid grid-cols-7 bg-slate-50 border-b">
-          {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day, idx) => (
-            <div key={day} className={`p-4 text-center text-sm font-semibold ${idx === 0 ? 'text-red-500' : 'text-slate-600'}`}>
-              {day}
-            </div>
-          ))}
-        </div>
-        {/* Grid cells */}
-        <div className="grid grid-cols-7">{renderCalendarCells()}</div>
+      <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium mb-2 text-zinc-600">
+        <div>Chủ nhật</div>
+        <div>Thứ Hai</div>
+        <div>Thứ Ba</div>
+        <div>Thứ Tư</div>
+        <div>Thứ Năm</div>
+        <div>Thứ Sáu</div>
+        <div>Thứ Bảy</div>
       </div>
 
-      {/* Legend */}
-      <div className="mt-6 flex flex-wrap gap-4">
-        {classes.map(cls => (
-          <div key={cls.__backendId} className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ background: cls.color }} />
-            <span className="text-sm text-slate-600">{cls.class_id} - {cls.class_name}</span>
+      <div className="grid grid-cols-7 gap-2 text-zinc-700">
+        {renderCells()}
+      </div>
+
+      {/* <div className="mt-6 flex flex-wrap gap-2">
+        {classes.map((cls) => (
+          <div
+            key={cls.id}
+            className={`text-xs px-2 py-1 rounded-full text-white ${getColorById(cls.id)}`}
+          >
+            {cls.name}
           </div>
         ))}
-      </div>
-
-      {/* Event Modal */}
-      <EventModal
-        open={showEventModal}
-        onOpenChange={setShowEventModal}
-        eventData={selectedEvent}
-        classes={classes}
-      />
+      </div> */}
     </div>
   );
 }

@@ -11,6 +11,8 @@ export async function getTeacherClasses(userId: string) {
         weekday: classes.weekday,
         time: classes.time,
         studentCount: count(students.id).as("studentCount"),
+        startDate: classes.startDate,
+        endDate: classes.endDate,
       })
       .from(classes)
       .leftJoin(students, eq(classes.id, students.classId))

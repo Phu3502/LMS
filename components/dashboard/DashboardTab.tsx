@@ -64,6 +64,11 @@ export default function DashboardTab({ classes }: any) {
                 <p className="text-sm text-slate-500">
                   ⏰ {cls.time}
                 </p>
+
+                <p className="text-sm text-slate-500">
+                  📅 {new Date(cls.startDate).toLocaleDateString("vi-VN")} -{" "}
+                  {new Date(cls.endDate).toLocaleDateString("vi-VN")}
+                </p>
               </div>
             </div>
           ))}

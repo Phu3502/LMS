@@ -18,7 +18,7 @@ export default function DashboardClient({ classes }: any) {
         {activeTab === "dashboard" && (
           <DashboardTab classes={classes} />
         )}
-        {activeTab === "calendar" && <CalendarTab />}
+        {activeTab === "calendar" && (<CalendarTab classes={classes}/>)}
         {activeTab === "attendance" && <AttendanceTab />}
         {activeTab === "salary" && <SalaryTab />}
       </main>
