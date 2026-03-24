@@ -14,6 +14,15 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const classes = await getTeacherClasses(session.user.id);
-  return <DashboardClient classes={classes} />;
+  const classes = await getTeacherClasses(
+  session.user.id,
+  session.user.role
+);
+  console.log(session.user.role);
+  return (
+  <DashboardClient 
+    classes={classes} 
+    role={session.user.role}
+  />
+);
 }

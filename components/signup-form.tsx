@@ -3,12 +3,10 @@
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
-  FieldDescription,
   FieldGroup,
-  FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { signIn, signUp } from "../server/user"
+import { signUp } from "../server/user"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -29,47 +27,75 @@ const formSchema = z.object({
   username: z.string().min(3, "Tên người dùng phải có ít nhất 3 ký tự"),
   email: z.string().email("Email không hợp lệ"),
   password: z.string().min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
+  role: z.enum(["admin", "teacher"]),
 })
 
 export function SignupForm({
   className,
+  isAdminMode = false,
   ...props
-}: React.ComponentProps<"form">) {
-  const [isLoading, setIsLoading] = React.useState(false);
-  const router = useRouter();
+}: React.ComponentProps<"form"> & { isAdminMode?: boolean }) {
+
+  const [isLoading, setIsLoading] = React.useState(false)
+  const router = useRouter()
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      username: "",
       email: "",
       password: "",
+      role: "teacher",
     },
   })
- 
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
-    const { success, message } = await signUp(values.email, values.password, values.username);
+    setIsLoading(true)
+
+    const { success, message } = await signUp(
+      values.email,
+      values.password,
+      values.username,
+      values.role // 🔥 truyền role
+    )
 
     if (success) {
-      toast.success(message as string);
-      router.push("/dashboard");
+      toast.success(message as string)
+
+      // ❗ chỉ redirect nếu không phải admin mode
+      if (!isAdminMode) {
+        router.push("/dashboard")
+      } else {
+        form.reset() // reset form cho admin dùng tiếp
+      }
+
     } else {
-      toast.error(message as string);
+      toast.error(message as string)
     }
-    setIsLoading(false);
+
+    setIsLoading(false)
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className={cn("flex flex-col gap-6", className)} {...props}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className={cn("flex flex-col gap-6", className)}
+        {...props}
+      >
         <FieldGroup>
           <div className="flex flex-col items-center gap-1 text-center">
-            <h1 className="text-2xl font-bold">Đăng ký tài khoản</h1>
-            <p className="text-sm text-balance text-muted-foreground">
-              Nhập thông tin của bạn để đăng ký tài khoản
+            <h1 className="text-2xl font-bold">
+              {isAdminMode ? "Tạo tài khoản" : "Đăng ký tài khoản"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {isAdminMode
+                ? "Tạo tài khoản cho giáo viên hoặc admin"
+                : "Nhập thông tin để đăng ký"}
             </p>
           </div>
 
-          {/* Username Field */}
+          {/* Username */}
           <FormField
             control={form.control}
             name="username"
@@ -84,7 +110,7 @@ export function SignupForm({
             )}
           />
 
-          {/* Email Field */}
+          {/* Email */}
           <FormField
             control={form.control}
             name="email"
@@ -99,15 +125,13 @@ export function SignupForm({
             )}
           />
 
-          {/* Password Field */}
+          {/* Password */}
           <FormField
             control={form.control}
             name="password"
             render={({ field }) => (
               <FormItem>
-                <div className="flex items-center justify-between">
-                  <FormLabel>Mật khẩu</FormLabel>
-                </div>
+                <FormLabel>Mật khẩu</FormLabel>
                 <FormControl>
                   <Input type="password" {...field} />
                 </FormControl>
@@ -116,12 +140,39 @@ export function SignupForm({
             )}
           />
 
-          {/* Submit Button */}
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? <Loader2 className="size-4 animate-spin" /> : "Đăng ký"}
+          {/* 🔥 ROLE SELECT (CHỈ ADMIN MỚI THẤY) */}
+          {isAdminMode && (
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vai trò</FormLabel>
+                  <FormControl>
+                    <select
+                      {...field}
+                      className="w-full border rounded-lg px-3 py-2"
+                    >
+                      <option value="teacher">Giáo viên</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {/* Submit */}
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : isAdminMode ? (
+              "Tạo tài khoản"
+            ) : (
+              "Đăng ký"
+            )}
           </Button>
-
-
         </FieldGroup>
       </form>
     </Form>

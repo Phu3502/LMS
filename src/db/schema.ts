@@ -4,7 +4,8 @@ import {
   text,
   timestamp,
   boolean,
-  index
+  index,
+  integer,
 } from "drizzle-orm/pg-core";
 
 /* =========================
@@ -16,6 +17,8 @@ export const user = pgTable("user", {
 
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+
+  role: text("role").default("teacher").notNull(),
 
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
@@ -66,7 +69,6 @@ export const account = pgTable(
 
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
-
     idToken: text("id_token"),
 
     accessTokenExpiresAt: timestamp("access_token_expires_at"),
@@ -120,11 +122,17 @@ export const classes = pgTable("classes", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
 
+  createdBy: text("created_by").references(() => user.id),
+
   weekday: text("weekday").notNull(),
   time: text("time").notNull(),
 
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
+
+  hourlyRate: integer("hourly_rate").notNull(), // ✅ thêm
+
+  status: text("status").default("active").notNull(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -139,7 +147,6 @@ export const students = pgTable(
     id: text("id").primaryKey(),
 
     name: text("name").notNull(),
-
     parentPhone: text("parent_phone"),
 
     classId: text("class_id")
@@ -178,10 +185,7 @@ export const studentReports = pgTable(
 
     comment: text("comment").notNull(),
 
-    status: text("status")
-      .default("pending")
-      .notNull(), 
-    // pending | approved | rejected
+    status: text("status").default("pending").notNull(),
 
     reviewedBy: text("reviewed_by").references(() => user.id),
     reviewedAt: timestamp("reviewed_at"),
@@ -210,9 +214,8 @@ export const salaries = pgTable(
 
     month: text("month").notNull(),
 
-    totalReports: text("total_reports"),
-
-    amount: text("amount").notNull(),
+    totalReports: integer("total_reports"),
+    amount: integer("amount").notNull(),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -236,6 +239,11 @@ export const userRelations = relations(user, ({ many }) => ({
 export const classesRelations = relations(classes, ({ one, many }) => ({
   teacher: one(user, {
     fields: [classes.teacherId],
+    references: [user.id],
+  }),
+
+  creator: one(user, {
+    fields: [classes.createdBy],
     references: [user.id],
   }),
 
@@ -269,11 +277,16 @@ export const studentReportsRelations = relations(
       fields: [studentReports.classId],
       references: [classes.id],
     }),
+
+    reviewer: one(user, {
+      fields: [studentReports.reviewedBy],
+      references: [user.id],
+    }),
   })
 );
 
 /* =========================
-   EXPORT SCHEMA
+   EXPORT
 ========================= */
 
 export const schema = {

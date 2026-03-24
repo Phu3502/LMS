@@ -5,12 +5,24 @@ import { nextCookies } from "better-auth/next-js";
 import { schema } from "../src/db/schema";
 
 export const auth = betterAuth({
-    emailAndPassword: { 
-    enabled: true, 
-    }, 
-    database: drizzleAdapter(db, {
-        provider: "pg", // or "mysql", "sqlite"
-        schema,
-    }),
-    plugins: [nextCookies()]
+  emailAndPassword: {
+    enabled: true,
+  },
+
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema,
+  }),
+
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        required: true,
+        defaultValue: "teacher",
+      },
+    },
+  },
+
+  plugins: [nextCookies()],
 });

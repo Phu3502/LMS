@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 function getColorById(id: string) {
   const colors = [
-    "bg-yellow-500",
+    "bg-blue-500",
     "bg-green-500",
     "bg-purple-500",
     "bg-red-500",
@@ -23,14 +23,15 @@ function getColorById(id: string) {
 type ClassType = {
   id: string;
   name: string;
-  weekday: string;
   time: string;
   startDate: Date | string;
   endDate: Date | string;
+  teacherName?: string;
 };
 
 type Props = {
   classes: ClassType[];
+  role: string;
 };
 
 export default function CalendarTab({ classes }: Props) {
@@ -38,16 +39,6 @@ export default function CalendarTab({ classes }: Props) {
 
   const month = currentDate.getMonth();
   const year = currentDate.getFullYear();
-
-  const weekdayMap: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
-  };
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -63,6 +54,7 @@ export default function CalendarTab({ classes }: Props) {
   const renderCells = () => {
     const cells = [];
 
+    // ô trống đầu tháng
     for (let i = 0; i < firstDayOfMonth; i++) {
       cells.push(<div key={`empty-${i}`} />);
     }
@@ -71,39 +63,64 @@ export default function CalendarTab({ classes }: Props) {
       const today = new Date();
       const current = new Date(year, month, day);
       const dayOfWeek = current.getDay();
+
       const isToday =
         day === today.getDate() &&
         month === today.getMonth() &&
         year === today.getFullYear();
 
+      // 🔥 LOGIC CHUẨN (KHÔNG BUG)
       const events = classes.filter((cls) => {
-        if (!cls.weekday || !cls.startDate || !cls.endDate) return false;
-
-        const classDay = weekdayMap[cls.weekday];
-        if (classDay !== dayOfWeek) return false;
+        if (!cls.startDate || !cls.endDate) return false;
 
         const start = new Date(cls.startDate);
         const end = new Date(cls.endDate);
 
-        return current >= start && current <= end;
+        // ngoài khoảng thời gian → bỏ
+        if (current < start || current > end) return false;
+
+        // lấy thứ từ startDate (chuẩn 100%)
+        return start.getDay() === dayOfWeek;
       });
 
       cells.push(
         <div
           key={day}
-          className={`min-h-[100px] border rounded-lg p-2 ${
-            isToday ? "bg-blue-500 text-white" : "bg-white"
+          className={`min-h-[110px] border rounded-xl p-2 transition ${
+            isToday
+              ? "bg-blue-50 border-blue-500"
+              : "bg-white hover:bg-slate-50"
           }`}
         >
-          <div className={`text-sm font-medium ${isToday ? "text-white" : ""}`}>{day}</div>
+          {/* Day number */}
+          <div
+            className={`text-sm font-semibold ${
+              isToday ? "text-blue-600" : "text-zinc-700"
+            }`}
+          >
+            {day}
+          </div>
 
+          {/* Events */}
           <div className="mt-2 flex flex-col gap-1">
             {events.map((cls) => (
               <div
                 key={cls.id}
-                className={`text-xs px-2 py-1 rounded text-white ${getColorById(cls.id)}`}
+                className={`rounded-md px-2 py-1 text-white text-xs shadow ${getColorById(
+                  cls.id
+                )}`}
               >
-                {cls.name} ({cls.time})
+                <div className="font-medium truncate">{cls.name}</div>
+
+                <div className="opacity-90 text-[11px]">
+                  ⏰ {cls.time}
+                </div>
+
+                {cls.teacherName && (
+                  <div className="opacity-80 text-[10px] truncate">
+                    👨‍🏫 {cls.teacherName}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -116,47 +133,45 @@ export default function CalendarTab({ classes }: Props) {
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4 text-zinc-700">
-        <button onClick={prevMonth}>
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={prevMonth}
+          className="p-2 rounded-lg hover:bg-slate-100"
+        >
           <ChevronLeft />
         </button>
 
-        <h2 className="font-semibold text-lg text-zinc-700">
+        <h2 className="font-semibold text-lg text-zinc-800">
           {currentDate.toLocaleString("vi-VN", {
             month: "long",
             year: "numeric",
           })}
         </h2>
 
-        <button onClick={nextMonth}>
+        <button
+          onClick={nextMonth}
+          className="p-2 rounded-lg hover:bg-slate-100"
+        >
           <ChevronRight />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium mb-2 text-zinc-600">
-        <div>Chủ nhật</div>
-        <div>Thứ Hai</div>
-        <div>Thứ Ba</div>
-        <div>Thứ Tư</div>
-        <div>Thứ Năm</div>
-        <div>Thứ Sáu</div>
-        <div>Thứ Bảy</div>
+      {/* WEEKDAY HEADER */}
+      <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium mb-2 text-zinc-500">
+        <div>CN</div>
+        <div>T2</div>
+        <div>T3</div>
+        <div>T4</div>
+        <div>T5</div>
+        <div>T6</div>
+        <div>T7</div>
       </div>
 
-      <div className="grid grid-cols-7 gap-2 text-zinc-700">
+      {/* GRID */}
+      <div className="grid grid-cols-7 gap-2">
         {renderCells()}
       </div>
-
-      {/* <div className="mt-6 flex flex-wrap gap-2">
-        {classes.map((cls) => (
-          <div
-            key={cls.id}
-            className={`text-xs px-2 py-1 rounded-full text-white ${getColorById(cls.id)}`}
-          >
-            {cls.name}
-          </div>
-        ))}
-      </div> */}
     </div>
   );
 }

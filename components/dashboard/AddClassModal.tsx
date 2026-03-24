@@ -1,74 +1,111 @@
-'use client';
+"use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useEffect, useState } from "react";
 
-interface AddClassModalProps {
+interface Teacher {
+  id: string;
+  name: string;
+}
+
+interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function AddClassModal({ open, onOpenChange }: AddClassModalProps) {
-  const [selectedColor, setSelectedColor] = useState('#3b82f6');
+export default function AddClassModal({ open, onOpenChange }: Props) {
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [search, setSearch] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // load teachers
+  useEffect(() => {
+    fetch("/api/teachers")
+      .then((res) => res.json())
+      .then(setTeachers);
+  }, []);
+
+  const filteredTeachers = teachers.filter((t) =>
+    t.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Xử lý thêm lớp (tạm thời đóng modal)
+
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+
+    const data = {
+      name: formData.get("name"),
+      description: formData.get("description"),
+      teacherId: formData.get("teacherId"),
+      weekday: formData.get("weekday"),
+      time: formData.get("time"),
+      startDate: formData.get("startDate"),
+      endDate: formData.get("endDate"),
+      hourlyRate: formData.get("hourlyRate"),
+    };
+
+    await fetch("/api/classes", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+
     onOpenChange(false);
+    location.reload();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="space-y-4">
         <DialogHeader>
-          <DialogTitle>Thêm lớp học mới</DialogTitle>
+          <DialogTitle>Thêm lớp học</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Mã lớp</label>
-              <input
-                type="text"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="VD: MATH101"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Tên lớp</label>
-              <input
-                type="text"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="VD: Toán 10"
-              />
-            </div>
-          </div>
-          {/* ... các trường khác giống HTML ... */}
 
-          {/* Color picker */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Màu hiển thị</label>
-            <div className="flex gap-3">
-              {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setSelectedColor(color)}
-                  className={`w-10 h-10 rounded-xl transition-all ${
-                    selectedColor === color ? 'ring-2 ring-offset-2' : ''
-                  }`}
-                  style={{ backgroundColor: color, '--tw-ring-color': color } as any}
-                />
-              ))}
-            </div>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input name="name" placeholder="Tên lớp" className="w-full border p-2" />
 
-          <button
-            type="submit"
-            className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
-          >
-            Thêm lớp
+          <input name="description" placeholder="Mô tả" className="w-full border p-2" />
+
+          {/* 🔥 SEARCH TEACHER */}
+          <input
+            placeholder="Tìm giáo viên..."
+            className="w-full border p-2"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          {/* 🔥 DROPDOWN */}
+          <select name="teacherId" className="w-full border p-2" required>
+            <option value="">Chọn giáo viên</option>
+            {filteredTeachers.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+
+          <input name="weekday" placeholder="Thứ" className="w-full border p-2" />
+          <input name="time" placeholder="Giờ" className="w-full border p-2" />
+
+          <input name="startDate" type="date" className="w-full border p-2" />
+          <input name="endDate" type="date" className="w-full border p-2" />
+
+          {/* 💰 SALARY */}
+          <input
+            name="hourlyRate"
+            type="number"
+            placeholder="Lương / giờ (VNĐ)"
+            className="w-full border p-2"
+            required
+          />
+
+          <button className="w-full bg-blue-600 text-white p-2 rounded">
+            Tạo lớp
           </button>
         </form>
       </DialogContent>

@@ -1,30 +1,34 @@
-import { db } from "@/src";
-import { classes, students } from "@/src/db/schema";
-import { eq, count } from "drizzle-orm";
+import { db } from "@/src/index";
+import { classes, user } from "@/src/db/schema";
+import { eq } from "drizzle-orm";
 
-export async function getTeacherClasses(userId: string) {
-  try {
+export async function getTeacherClasses(userId: string, role: string) {
+  if (role === "admin") {
     return await db
       .select({
         id: classes.id,
         name: classes.name,
         weekday: classes.weekday,
         time: classes.time,
-        studentCount: count(students.id).as("studentCount"),
         startDate: classes.startDate,
         endDate: classes.endDate,
+        teacherName: user.name,
       })
       .from(classes)
-      .leftJoin(students, eq(classes.id, students.classId))
-      .where(eq(classes.teacherId, userId))
-      .groupBy(
-        classes.id,
-        classes.name,
-        classes.weekday,
-        classes.time
-      );
-  } catch (err: any) {
-    console.error("🔥 DB ERROR:", err);
-    throw err;
+      .leftJoin(user, eq(classes.teacherId, user.id));
   }
+
+  return await db
+    .select({
+      id: classes.id,
+      name: classes.name,
+      weekday: classes.weekday,
+      time: classes.time,
+      startDate: classes.startDate,
+      endDate: classes.endDate,
+      teacherName: user.name,
+    })
+    .from(classes)
+    .leftJoin(user, eq(classes.teacherId, user.id))
+    .where(eq(classes.teacherId, userId));
 }
