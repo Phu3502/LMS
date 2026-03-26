@@ -134,7 +134,7 @@ export default function CalendarTab({ classes }: Props) {
   return (
     <div className="p-4">
       {/* HEADER */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 text-zinc-800">
         <button
           onClick={prevMonth}
           className="p-2 rounded-lg hover:bg-slate-100"
@@ -151,7 +151,7 @@ export default function CalendarTab({ classes }: Props) {
 
         <button
           onClick={nextMonth}
-          className="p-2 rounded-lg hover:bg-slate-100"
+          className="p-2 rounded-lg hover:bg-slate-100 text-zinc-800"
         >
           <ChevronRight />
         </button>

@@ -1,195 +1,260 @@
-// components/dashboard/AttendanceTab.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-// Mock attendance records
-const mockAttendance = [
-  {
-    __backendId: 'a1',
-    class_id: '1',
-    attendance_date: '2025-03-10',
-    attendance_time: '19:00',
-    teacher_notes: 'Buổi học tốt',
-    approval_status: 'approved',
-    payment_status: 'paid',
-  },
-  {
-    __backendId: 'a2',
-    class_id: '2',
-    attendance_date: '2025-03-12',
-    attendance_time: '18:30',
-    teacher_notes: 'Học sinh chăm chỉ',
-    approval_status: 'pending',
-    payment_status: 'unpaid',
-  },
-];
+type AttendanceRecord = {
+  id: string;
+  class_id: string;
+  class_name?: string;
+  attendance_date: string;
+  attendance_time: string;
+  teacher_notes?: string;
+  approval_status: 'approved' | 'pending' | 'rejected';
+  teacher_name?: string;
+  created_at?: string;
+};
 
-// Mock classes (giống trên)
-const mockClasses = [
-  { __backendId: '1', class_id: 'MATH101', class_name: 'Toán 10' },
-  { __backendId: '2', class_id: 'PHY201', class_name: 'Vật lý 11' },
-];
+type ClassItem = {
+  id: string;
+  name: string;
+};
 
 export default function AttendanceTab() {
-  const [attendanceRecords] = useState(mockAttendance);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const [selectedClass, setSelectedClass] = useState('');
-  const [attDate, setAttDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
+  const [attDate, setAttDate] = useState(new Date().toISOString().split('T')[0]);
   const [attTime, setAttTime] = useState('19:00');
   const [attNotes, setAttNotes] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
+  const [adminNote, setAdminNote] = useState('');
+
+  const statusMap: Record<string, string> = {
+    approved: 'bg-emerald-100 text-emerald-700',
+    rejected: 'bg-red-100 text-red-700',
+    pending: 'bg-amber-100 text-amber-700',
+  };
+
+  // ================= FETCH =================
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [attRes, classRes, sessionRes] = await Promise.all([
+          fetch('/api/attendance'),
+          fetch('/api/classes'),
+          fetch('/api/auth/get-session'),
+        ]);
+
+        const attData = await attRes.json();
+        const classData = await classRes.json();
+        const session = await sessionRes.json();
+
+        setAttendanceRecords(attData);
+        setClasses(classData);
+
+        if (session?.user?.role === 'admin') {
+          setIsAdmin(true);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // ================= SUBMIT (TEACHER) =================
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Xử lý gửi chấm công (mock)
-    alert('Đã gửi chấm công (demo)');
-    // Reset form
+
+    const res = await fetch('/api/attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        class_id: selectedClass,
+        attendance_date: attDate,
+        attendance_time: attTime,
+        teacher_notes: attNotes,
+      }),
+    });
+
+    const newRecord = await res.json();
+    setAttendanceRecords(prev => [newRecord, ...prev]);
+
     setSelectedClass('');
     setAttDate(new Date().toISOString().split('T')[0]);
     setAttTime('19:00');
     setAttNotes('');
   };
 
-  const getClassName = (classId: string) => {
-    const cls = mockClasses.find(c => c.__backendId === classId);
-    return cls ? `${cls.class_id} - ${cls.class_name}` : 'Lớp không xác định';
+  // ================= ADMIN ACTION =================
+  const handleAction = async (status: 'approved' | 'rejected') => {
+    if (!selectedRecord) return;
+
+    await fetch('/api/attendance', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: selectedRecord.id,
+        status,
+        note: adminNote,
+      }),
+    });
+
+    setAttendanceRecords(prev =>
+      prev.filter(r => r.id !== selectedRecord.id)
+    );
+
+    setSelectedRecord(null);
+    setAdminNote('');
+  };
+
+  // ================= HELPERS =================
+  const formatDate = (date?: string) => {
+    if (!date) return '-';
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('vi-VN');
+  };
+
+  const formatDateTime = (date?: string) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? '' : d.toLocaleString('vi-VN');
   };
 
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-slate-800">Chấm công</h2>
-        <p className="text-slate-500 mt-1">Ghi nhận và theo dõi các buổi dạy</p>
+        <h2 className="text-2xl font-bold text-slate-900">Chấm công</h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Form gửi chấm công */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Gửi chấm công mới
-          </h3>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Mã lớp</label>
+
+        {/* ❌ ADMIN KHÔNG CÓ FORM */}
+        {!isAdmin && (
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
+                className="w-full p-3 border rounded-xl"
               >
-                <option value="">Chọn lớp học</option>
-                {mockClasses.map(cls => (
-                  <option key={cls.__backendId} value={cls.__backendId}>
-                    {cls.class_id} - {cls.class_name}
+                <option value="">Chọn lớp</option>
+                {classes.map(cls => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name}
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Ngày dạy</label>
-                <input
-                  type="date"
-                  value={attDate}
-                  onChange={(e) => setAttDate(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Thời gian</label>
-                <input
-                  type="time"
-                  value={attTime}
-                  onChange={(e) => setAttTime(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Nhận xét của giáo viên</label>
+
+              <input
+                type="date"
+                value={attDate}
+                onChange={(e) => setAttDate(e.target.value)}
+                className="w-full p-3 border rounded-xl"
+              />
+
+              <input
+                type="time"
+                value={attTime}
+                onChange={(e) => setAttTime(e.target.value)}
+                className="w-full p-3 border rounded-xl"
+              />
+
               <textarea
                 value={attNotes}
                 onChange={(e) => setAttNotes(e.target.value)}
-                rows={4}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none text-slate-900"
-                placeholder="Ghi chú về buổi học..."
+                className="w-full p-3 border rounded-xl"
               />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-              Gửi chấm công
-            </button>
-          </form>
-        </div>
 
-        {/* Lịch sử chấm công */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Lịch sử chấm công
-          </h3>
-          <div className="space-y-4 max-h-96 overflow-auto scrollbar-thin pr-2">
-            {attendanceRecords.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-slate-500">Chưa có lịch sử chấm công</p>
-              </div>
-            ) : (
-              attendanceRecords.map(record => {
-                const statusColor =
-                  record.approval_status === 'approved' ? 'emerald' :
-                  record.approval_status === 'rejected' ? 'red' : 'amber';
-                const statusText =
-                  record.approval_status === 'approved' ? 'Đã duyệt' :
-                  record.approval_status === 'rejected' ? 'Từ chối' : 'Chờ duyệt';
-
-                return (
-                  <div key={record.__backendId} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-semibold text-slate-800">{getClassName(record.class_id)}</p>
-                      </div>
-                      <span className={`status-badge bg-${statusColor}-100 text-${statusColor}-700`}>
-                        {statusText}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        {new Date(record.attendance_date).toLocaleDateString('vi-VN')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {record.attendance_time}
-                      </span>
-                    </div>
-                    {record.teacher_notes && (
-                      <p className="mt-2 text-sm text-slate-600 italic">"{record.teacher_notes}"</p>
-                    )}
-                  </div>
-                );
-              })
-            )}
+              <button className="w-full bg-blue-600 text-white p-3 rounded-xl">
+                Gửi chấm công
+              </button>
+            </form>
           </div>
+        )}
+
+        {/* ================= LIST ================= */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 col-span-1 lg:col-span-2">
+          {attendanceRecords.map(record => (
+            <div
+              key={record.id}
+              onClick={() => isAdmin && setSelectedRecord(record)}
+              className={`p-4 mb-4 rounded-xl border bg-slate-50 cursor-pointer hover:shadow ${
+                isAdmin ? 'hover:bg-slate-100' : ''
+              }`}
+            >
+              <div className="flex justify-between">
+                <p className="font-semibold text-slate-900">
+                  {record.class_name}
+                </p>
+
+                <span className={`px-2 py-1 text-xs rounded ${statusMap[record.approval_status]}`}>
+                  {record.approval_status}
+                </span>
+              </div>
+
+              <p className="text-sm text-slate-700">
+                {formatDate(record.attendance_date)} - {record.attendance_time}
+              </p>
+
+              {record.teacher_name && (
+                <p className="text-xs text-slate-500">
+                  GV: {record.teacher_name}
+                </p>
+              )}
+
+              {record.created_at && (
+                <p className="text-xs text-slate-500">
+                  Gửi lúc: {formatDateTime(record.created_at)}
+                </p>
+              )}
+            </div>
+          ))}
         </div>
       </div>
+
+      {/* ================= MODAL ADMIN ================= */}
+      {selectedRecord && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-xl w-96 space-y-4 text-zinc-900">
+            <h3 className="font-bold text-lg">Xử lý chấm công</h3>
+
+            <textarea
+              placeholder="Lý do (nếu từ chối)"
+              value={adminNote}
+              onChange={(e) => setAdminNote(e.target.value)}
+              className="w-full p-3 border rounded"
+            />
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleAction('approved')}
+                className="flex-1 bg-green-600 text-white p-2 rounded"
+              >
+                Duyệt
+              </button>
+
+              <button
+                onClick={() => handleAction('rejected')}
+                className="flex-1 bg-red-600 text-white p-2 rounded"
+              >
+                Từ chối
+              </button>
+            </div>
+
+            <button
+              onClick={() => setSelectedRecord(null)}
+              className="w-full text-sm text-gray-500"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

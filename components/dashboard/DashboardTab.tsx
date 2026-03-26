@@ -62,7 +62,6 @@ export default function DashboardTab({ classes, role }: any) {
               </button>
             )}
 
-            <Logout />
           </div>
         </div>
 

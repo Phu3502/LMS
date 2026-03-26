@@ -56,17 +56,17 @@ export function SignupForm({
       values.email,
       values.password,
       values.username,
-      values.role // 🔥 truyền role
+      values.role
     )
 
     if (success) {
       toast.success(message as string)
 
-      // ❗ chỉ redirect nếu không phải admin mode
+      
       if (!isAdminMode) {
         router.push("/dashboard")
       } else {
-        form.reset() // reset form cho admin dùng tiếp
+        form.reset() 
       }
 
     } else {
@@ -95,7 +95,6 @@ export function SignupForm({
             </p>
           </div>
 
-          {/* Username */}
           <FormField
             control={form.control}
             name="username"
@@ -110,7 +109,6 @@ export function SignupForm({
             )}
           />
 
-          {/* Email */}
           <FormField
             control={form.control}
             name="email"
@@ -125,7 +123,6 @@ export function SignupForm({
             )}
           />
 
-          {/* Password */}
           <FormField
             control={form.control}
             name="password"
@@ -140,7 +137,6 @@ export function SignupForm({
             )}
           />
 
-          {/* 🔥 ROLE SELECT (CHỈ ADMIN MỚI THẤY) */}
           {isAdminMode && (
             <FormField
               control={form.control}
@@ -163,7 +159,6 @@ export function SignupForm({
             />
           )}
 
-          {/* Submit */}
           <Button type="submit" disabled={isLoading}>
             {isLoading ? (
               <Loader2 className="size-4 animate-spin" />

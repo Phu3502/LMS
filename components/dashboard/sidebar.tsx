@@ -1,6 +1,7 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { Logout } from "../logout";
 
 interface SidebarProps {
   activeTab: string;
@@ -34,6 +35,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       label: "Bảng lương",
       icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2",
     },
+    
 
     ...(isAdmin
       ? [
@@ -129,8 +131,13 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         })}
       </nav>
 
+      <div className="p-4 border-t border-white/10">
+        <Logout />
+      </div>
+      
       {/* Footer */}
       <div className="p-4 border-t border-white/10">
+        
         <div className="glass-effect rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-blue-200 text-xs">

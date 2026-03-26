@@ -16,7 +16,7 @@ export default function CreateUserTab() {
 
   return (
     <div className="p-8 flex justify-center">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 text-zinc-800">
         <SignupForm />
       </div>
     </div>

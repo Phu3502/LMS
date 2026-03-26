@@ -6,7 +6,11 @@ import {
   boolean,
   index,
   integer,
+  date, 
+  time, 
+  uuid,
 } from "drizzle-orm/pg-core";
+
 
 /* =========================
    AUTH TABLES (BetterAuth)
@@ -224,6 +228,39 @@ export const salaries = pgTable(
   })
 );
 
+// =========================
+// ATTENDANCE (PRODUCTION)
+// =========================
+
+export const attendance = pgTable(
+  "attendance",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+
+    classId: text("class_id")
+      .notNull()
+      .references(() => classes.id, { onDelete: "cascade" }),
+
+    teacherId: text("teacher_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+
+    attendanceDate: date("attendance_date").notNull(),
+    attendanceTime: time("attendance_time").notNull(),
+
+    teacherNotes: text("teacher_notes"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+
+    approvalStatus: text("approval_status").default("pending"),
+    paymentStatus: text("payment_status").default("unpaid"),
+  },
+  (table) => ({
+    teacherIdx: index("attendance_teacher_idx").on(table.teacherId),
+    classIdx: index("attendance_class_idx").on(table.classId),
+  })
+);
+
 /* =========================
    RELATIONS
 ========================= */
@@ -284,6 +321,18 @@ export const studentReportsRelations = relations(
     }),
   })
 );
+
+export const attendanceRelations = relations(attendance, ({ one }) => ({
+  class: one(classes, {
+    fields: [attendance.classId],
+    references: [classes.id],
+  }),
+
+  teacher: one(user, {
+    fields: [attendance.teacherId],
+    references: [user.id],
+  }),
+}));
 
 /* =========================
    EXPORT
