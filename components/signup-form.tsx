@@ -52,25 +52,57 @@ export function SignupForm({
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
 
-    const { success, message } = await signUp(
-      values.email,
-      values.password,
-      values.username,
-      values.role
-    )
+    let success = false
+    let message = ""
 
-    if (success) {
-      toast.success(message as string)
+    try {
+      if (isAdminMode) {
+        // ✅ ADMIN → gọi API (KHÔNG login)
+        const response = await fetch("/api/admin/create-user", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: values.email,
+            password: values.password,
+            name: values.username,
+            role: values.role,
+          }),
+        })
 
-      
-      if (!isAdminMode) {
-        router.push("/dashboard")
+        const data = await response.json()
+        success = response.ok
+        message = data.message || (success ? "Tạo tài khoản thành công" : "Có lỗi xảy ra")
+
       } else {
-        form.reset() 
+        // ✅ USER → đăng ký bình thường (có login)
+        const res = await signUp(
+          values.email,
+          values.password,
+          values.username,
+          values.role
+        )
+
+        success = res.success
+        message = res.message as string
       }
 
-    } else {
-      toast.error(message as string)
+      if (success) {
+        toast.success(message)
+
+        if (!isAdminMode) {
+          router.push("/dashboard")
+        } else {
+          form.reset()
+        }
+
+      } else {
+        toast.error(message)
+      }
+
+    } catch (err) {
+      toast.error("Có lỗi xảy ra")
     }
 
     setIsLoading(false)

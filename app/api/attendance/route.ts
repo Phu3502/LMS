@@ -3,17 +3,13 @@ import { attendance, classes, user } from "@/src/db/schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { eq, desc } from "drizzle-orm";
+import { getSession } from "@/lib/getSession";
 
 // ================= GET =================
 export async function GET() {
   try {
-    const h = await headers();
-
-    const session = await auth.api.getSession({
-      headers: {
-        cookie: h.get("cookie") ?? "",
-      },
-    });
+    
+    const session = await getSession();
 
     if (!session) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });

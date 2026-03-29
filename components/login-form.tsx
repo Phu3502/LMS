@@ -50,7 +50,10 @@ export function LoginForm({
 
     if (success) {
       toast.success(message as string);
+      
       router.push("/dashboard");
+
+      router.refresh();
     } else {
       toast.error(message as string);
     }
@@ -110,14 +113,6 @@ export function LoginForm({
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? <Loader2 className="size-4 animate-spin" /> : "Đăng nhập"}
           </Button>
-
-          {/* Optional: Sign up link */}
-          <div className="text-center text-sm">
-            Chưa có tài khoản?{" "}
-            <a href="/signup" className="underline underline-offset-4">
-              Đăng ký
-            </a>
-          </div>
 
         </FieldGroup>
       </form>

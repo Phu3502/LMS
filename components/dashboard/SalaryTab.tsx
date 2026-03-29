@@ -1,161 +1,279 @@
-// components/dashboard/SalaryTab.tsx
 'use client';
 
-// Mock data cho bảng lương
-const mockClasses = [
-  {
-    __backendId: '1',
-    class_id: 'MATH101',
-    class_name: 'Toán 10',
-    rate_per_session: 300000,
-    color: '#3b82f6',
-  },
-  {
-    __backendId: '2',
-    class_id: 'PHY201',
-    class_name: 'Vật lý 11',
-    rate_per_session: 350000,
-    color: '#10b981',
-  },
-];
+import { useEffect, useMemo, useState, useCallback } from "react";
 
-const mockAttendance = [
-  { class_id: '1', approval_status: 'approved', payment_status: 'paid' },
-  { class_id: '1', approval_status: 'approved', payment_status: 'paid' },
-  { class_id: '1', approval_status: 'approved', payment_status: 'unpaid' },
-  { class_id: '2', approval_status: 'approved', payment_status: 'paid' },
-  { class_id: '2', approval_status: 'pending', payment_status: 'unpaid' },
-  { class_id: '2', approval_status: 'approved', payment_status: 'unpaid' },
-];
+// ================= TYPES =================
+type ApprovalStatus = "pending" | "approved";
 
+interface SalaryItem {
+  id: string;
+  class_id: string;
+  class_name: string;
+  attendance_date: string;
+  attendance_time: string;
+  created_at: string;
+  hourly_rate: number | null;
+  approval_status: ApprovalStatus;
+}
+
+interface SalaryResponse {
+  data: SalaryItem[];
+}
+
+// ================= UTILS =================
+const formatCurrency = (value?: number | null) => {
+  if (!value) return "-";
+  return new Intl.NumberFormat("vi-VN").format(value) + " ₫";
+};
+
+const getUniqueClasses = (data: SalaryItem[]) => {
+  return Array.from(
+    new Map(
+      data.map((item) => [
+        item.class_id,
+        { id: item.class_id, name: item.class_name },
+      ])
+    ).values()
+  );
+};
+
+// ================= COMPONENT =================
 export default function SalaryTab() {
-  const classes = mockClasses;
-  const attendanceRecords = mockAttendance;
+  // filters
+  const [status, setStatus] = useState<ApprovalStatus>("pending");
+  const [month, setMonth] = useState("");
+  const [classId, setClassId] = useState("");
 
-  // Tính tổng lương
-  let totalApproved = 0;
-  let totalPending = 0;
-  let totalPaid = 0;
-  let approvedSessions = 0;
-  let pendingSessions = 0;
-  let paidSessions = 0;
+  // data
+  const [data, setData] = useState<SalaryItem[]>([]);
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
 
-  const classSalary = classes.map(cls => {
-    const classAttendance = attendanceRecords.filter(a => a.class_id === cls.__backendId);
-    const approved = classAttendance.filter(a => a.approval_status === 'approved');
-    const pending = classAttendance.filter(a => a.approval_status === 'pending');
-    const paid = classAttendance.filter(a => a.payment_status === 'paid');
+  // state
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const approvedAmount = approved.length * cls.rate_per_session;
-    const pendingAmount = pending.length * cls.rate_per_session;
-    const paidAmount = paid.length * cls.rate_per_session;
+  // ================= FETCH =================
+  const fetchSalary = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    totalApproved += approvedAmount;
-    totalPending += pendingAmount;
-    totalPaid += paidAmount;
-    approvedSessions += approved.length;
-    pendingSessions += pending.length;
-    paidSessions += paid.length;
+      const params = new URLSearchParams();
+      if (classId) params.append("classId", classId);
+      if (month) params.append("month", month);
 
-    const paymentStatus = paid.length === approved.length && approved.length > 0 ? 'Đã thanh toán' :
-                          approved.length > 0 ? 'Chưa thanh toán' : 'Chưa có';
-    const statusColor = paymentStatus === 'Đã thanh toán' ? 'emerald' :
-                        paymentStatus === 'Chưa thanh toán' ? 'amber' : 'slate';
+      const res = await fetch(`/api/salary?${params.toString()}`);
 
-    return (
-      <tr key={cls.__backendId} className="hover:bg-slate-50 transition-colors">
-        <td className="px-6 py-4">
-          <span className="font-medium" style={{ color: cls.color }}>{cls.class_id}</span>
-        </td>
-        <td className="px-6 py-4 font-medium text-slate-800">{cls.class_name}</td>
-        <td className="px-6 py-4 text-center">
-          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold">
-            {approved.length}
-          </span>
-        </td>
-        <td className="px-6 py-4 text-right text-slate-600">
-          {new Intl.NumberFormat('vi-VN').format(cls.rate_per_session)} ₫
-        </td>
-        <td className="px-6 py-4 text-right font-bold text-emerald-600">
-          {new Intl.NumberFormat('vi-VN').format(approvedAmount)} ₫
-        </td>
-        <td className="px-6 py-4 text-center">
-          <span className={`status-badge bg-${statusColor}-100 text-${statusColor}-700`}>
-            {paymentStatus}
-          </span>
-        </td>
-      </tr>
-    );
-  });
+      if (!res.ok) throw new Error("Fetch failed");
 
+      const json: SalaryResponse = await res.json();
+
+      setData(json.data ?? []);
+      setClasses(getUniqueClasses(json.data ?? []));
+    } catch (err: any) {
+      console.error(err);
+      setError("Không thể tải dữ liệu");
+    } finally {
+      setLoading(false);
+    }
+  }, [classId, month]);
+
+  useEffect(() => {
+    fetchSalary();
+  }, [fetchSalary]);
+
+  // ================= DERIVED STATE =================
+
+  // summary (ALL DATA)
+  const summary = useMemo(() => {
+    let pending = 0;
+    let approved = 0;
+
+    for (const item of data) {
+      if (item.approval_status === "pending") pending++;
+      if (item.approval_status === "approved") approved++;
+    }
+
+    return { pending, approved };
+  }, [data]);
+
+  // filtered table
+  const tableData = useMemo(() => {
+    return data
+      .filter((item) =>
+        status === "pending"
+          ? item.approval_status === "pending"
+          : item.approval_status === "approved"
+      )
+      .map((item) => ({
+        ...item,
+        formattedDate: item.attendance_date,
+        formattedCreatedAt: new Date(item.created_at).toLocaleDateString(),
+        formattedRate: formatCurrency(item.hourly_rate),
+      }));
+  }, [data, status]);
+
+  // ================= HANDLERS =================
+  const handleReset = () => {
+    setMonth("");
+    setClassId("");
+  };
+
+  // ================= RENDER =================
   return (
     <div className="p-8">
+      {/* HEADER */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-slate-800">Bảng lương cá nhân</h2>
-        <p className="text-slate-500 mt-1">Theo dõi thu nhập từ các lớp học</p>
+        <h2 className="text-2xl font-bold text-slate-800">
+          Bảng lương cá nhân
+        </h2>
+        <p className="text-slate-500 mt-1">
+          Theo dõi thu nhập từ các lớp học
+        </p>
       </div>
 
-      {/* Summary Cards */}
+      {/* FILTER */}
+      <div className="flex gap-4 mb-6">
+        <input
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          className="border rounded-lg px-3 py-2"
+        />
+
+        <select
+          value={classId}
+          onChange={(e) => setClassId(e.target.value)}
+          className="border rounded-lg px-3 py-2"
+        >
+          <option value="">Tất cả lớp</option>
+          {classes.map((cls) => (
+            <option key={cls.id} value={cls.id}>
+              {cls.name}
+            </option>
+          ))}
+        </select>
+
+        <button
+          onClick={handleReset}
+          className="px-4 py-2 border rounded-lg"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* SUMMARY */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg">
-          <p className="text-emerald-100 text-sm mb-1">Tổng lương đã duyệt</p>
-          <p className="text-3xl font-bold">{new Intl.NumberFormat('vi-VN').format(totalApproved)} ₫</p>
-          <div className="mt-4 flex items-center gap-2 text-emerald-100 text-sm">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-            </svg>
-            <span>{approvedSessions} buổi đã duyệt</span>
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
+
+        <div
+          onClick={() => setStatus("pending")}
+          className={`bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg cursor-pointer transition-all ${
+            status === "pending" ? "ring-2 ring-amber-300 scale-[1.02]" : ""
+          }`}
+        >
           <p className="text-amber-100 text-sm mb-1">Lương chờ duyệt</p>
-          <p className="text-3xl font-bold">{new Intl.NumberFormat('vi-VN').format(totalPending)} ₫</p>
-          <div className="mt-4 flex items-center gap-2 text-amber-100 text-sm">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{pendingSessions} buổi chờ duyệt</span>
-          </div>
+          <p className="text-3xl font-bold">{summary.pending}</p>
         </div>
-        {/* <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg">
-          <p className="text-blue-100 text-sm mb-1">Đã thanh toán</p>
-          <p className="text-3xl font-bold">{new Intl.NumberFormat('vi-VN').format(totalPaid)} ₫</p>
-          <div className="mt-4 flex items-center gap-2 text-blue-100 text-sm">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{paidSessions} buổi đã thanh toán</span>
-          </div>
-        </div> */}
+
+        <div
+          onClick={() => setStatus("approved")}
+          className={`bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg cursor-pointer transition-all ${
+            status === "approved" ? "ring-2 ring-emerald-300 scale-[1.02]" : ""
+          }`}
+        >
+          <p className="text-emerald-100 text-sm mb-1">
+            Tổng lương đã duyệt
+          </p>
+          <p className="text-3xl font-bold">{summary.approved}</p>
+        </div>
       </div>
 
-      {/* Bảng chi tiết lương */}
+      {/* TABLE */}
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800">Chi tiết lương theo lớp</h3>
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="text-lg font-bold text-slate-800">
+            Chi tiết chấm công
+          </h3>
+
+          {error && (
+            <button
+              onClick={fetchSalary}
+              className="text-sm text-red-500 underline"
+            >
+              Thử lại
+            </button>
+          )}
         </div>
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Mã lớp</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Tên lớp</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase">Buổi đã duyệt</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Rate/buổi</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Tổng lương</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase">Trạng thái</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
+                  Tên lớp
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
+                  Ngày dạy
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
+                  Thời gian
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
+                  Ngày chấm công
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
+                  Rate lương
+                </th>
+                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase">
+                  Trạng thái
+                </th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-slate-100">
-              {classSalary}
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-10 text-slate-400">
+                    Đang tải dữ liệu...
+                  </td>
+                </tr>
+              ) : tableData.length > 0 ? (
+                tableData.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-slate-800">
+                      {item.class_name}
+                    </td>
+                    <td className="px-6 py-4">{item.formattedDate}</td>
+                    <td className="px-6 py-4">{item.attendance_time}</td>
+                    <td className="px-6 py-4">{item.formattedCreatedAt}</td>
+                    <td className="px-6 py-4 font-semibold text-emerald-600">
+                      {item.formattedRate}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span
+                        className={`status-badge ${
+                          item.approval_status === "approved"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {item.approval_status === "approved"
+                          ? "Đã duyệt"
+                          : "Chờ duyệt"}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="text-center py-10 text-slate-500">
+                    {error ?? "Không có dữ liệu"}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        {classes.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-slate-500">Chưa có dữ liệu lương</p>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,9 +1,8 @@
-// app/dashboard/page.tsx
-import { getSession } from "@/lib/getSession";
 import { getTeacherClasses } from "@/lib/queries/getTeacherClasses";
 import DashboardTab from "@/components/dashboard/DashboardTab";
+import { getSession } from "@/lib/getSession";
 
-export default async function DashboardPage() {
+export default async function ClassesPage() {
   const session = await getSession();
 
   const classes = await getTeacherClasses(

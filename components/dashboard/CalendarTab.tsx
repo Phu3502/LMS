@@ -69,17 +69,14 @@ export default function CalendarTab({ classes }: Props) {
         month === today.getMonth() &&
         year === today.getFullYear();
 
-      // 🔥 LOGIC CHUẨN (KHÔNG BUG)
       const events = classes.filter((cls) => {
         if (!cls.startDate || !cls.endDate) return false;
 
         const start = new Date(cls.startDate);
         const end = new Date(cls.endDate);
 
-        // ngoài khoảng thời gian → bỏ
         if (current < start || current > end) return false;
 
-        // lấy thứ từ startDate (chuẩn 100%)
         return start.getDay() === dayOfWeek;
       });
 
