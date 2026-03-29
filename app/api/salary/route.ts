@@ -1,8 +1,9 @@
 import { db } from "@/src/index";
 import { attendance, classes, user } from "@/src/db/schema";
+import { eq, desc, and, sql, gte, lte, ilike } from "drizzle-orm";
 import { getSession } from "@/lib/getSession";
-import { eq, desc, and, gte, lt } from "drizzle-orm";
 
+// ================= GET =================
 export async function GET(req: Request) {
   try {
     const session = await getSession();
@@ -13,40 +14,39 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
 
-    const status = searchParams.get("status"); // pending | approved
+    const status = searchParams.get("status"); // pending | approved | rejected
     const classId = searchParams.get("classId");
-    const month = searchParams.get("month"); // YYYY-MM
+    const teacher = searchParams.get("teacher");
+    const fromDate = searchParams.get("fromDate");
+    const toDate = searchParams.get("toDate");
 
-    const filters = [];
+    const isAdmin = session.user.role === "admin";
 
-    // 🔐 ROLE FILTER
-    if (session.user.role !== "admin") {
-      filters.push(eq(attendance.teacherId, session.user.id));
+    const conditions = [];
+
+    // 🔒 USER chỉ thấy của mình
+    if (!isAdmin) {
+      conditions.push(eq(attendance.teacherId, session.user.id));
     }
 
-    //  STATUS
     if (status) {
-      filters.push(eq(attendance.approvalStatus, status));
+      conditions.push(eq(attendance.approvalStatus, status as any));
     }
 
-    // CLASS
     if (classId) {
-      filters.push(eq(attendance.classId, classId));
+      conditions.push(eq(attendance.classId, classId));
     }
 
-    //  MONTH
-    if (month) {
-        const start = `${month}-01`;
+    if (teacher && isAdmin) {
+      conditions.push(ilike(user.name, `%${teacher}%`));
+    }
 
-        const endDate = new Date(start);
-        endDate.setMonth(endDate.getMonth() + 1);
+    if (fromDate) {
+      conditions.push(gte(attendance.attendanceDate, fromDate));
+    }
 
-        const end = endDate.toISOString().split("T")[0];
-
-        filters.push(
-            gte(attendance.attendanceDate, start),
-            lt(attendance.attendanceDate, end)
-        );
+    if (toDate) {
+      conditions.push(lte(attendance.attendanceDate, toDate));
     }
 
     const data = await db
@@ -57,51 +57,25 @@ export async function GET(req: Request) {
         attendance_time: attendance.attendanceTime,
         teacher_notes: attendance.teacherNotes,
 
-        teacher_name: user.name,
         created_at: attendance.createdAt,
-
         approval_status: attendance.approvalStatus,
-        payment_status: attendance.paymentStatus,
 
         class_id: classes.id,
         class_name: classes.name,
-        hourly_rate: classes.hourlyRate,
+
+        // 🔥 FIX QUAN TRỌNG (mất teacher)
+        teacher_name: user.name,
+
+        // 🔥 FIX NaN rate
+        rate: sql<number>`COALESCE(${classes.rate}, 0)`,
       })
       .from(attendance)
       .leftJoin(classes, eq(attendance.classId, classes.id))
       .leftJoin(user, eq(attendance.teacherId, user.id))
-      .where(filters.length ? and(...filters) : undefined)
+      .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(attendance.createdAt));
 
-    // ================= SUMMARY =================
-    let totalApproved = 0;
-    let totalPending = 0;
-    let approvedSessions = 0;
-    let pendingSessions = 0;
-
-    for (const item of data) {
-      const rate = item.hourly_rate ?? 0;
-
-      if (item.approval_status === "approved") {
-        totalApproved += rate;
-        approvedSessions++;
-      }
-
-      if (item.approval_status === "pending") {
-        totalPending += rate;
-        pendingSessions++;
-      }
-    }
-
-    return Response.json({
-      summary: {
-        totalApproved,
-        totalPending,
-        approvedSessions,
-        pendingSessions,
-      },
-      data,
-    });
+    return Response.json({ data });
 
   } catch (error) {
     console.error("SALARY API ERROR:", error);

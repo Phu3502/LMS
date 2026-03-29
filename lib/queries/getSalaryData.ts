@@ -2,37 +2,34 @@ import { db } from "@/src/index";
 import { attendance, classes, user } from "@/src/db/schema";
 import { eq, desc } from "drizzle-orm";
 
-export async function getAttendance(userId: string, role: string) {
+export async function getSalaryData(userId: string, role: string) {
   const isAdmin = role === "admin";
 
   const data = await db
     .select({
       id: attendance.id,
-
-      // ✅ REQUIRED (match frontend)
       class_id: attendance.classId,
+      class_name: classes.name,
+
       attendance_date: attendance.attendanceDate,
       attendance_time: attendance.attendanceTime,
-      approval_status: attendance.approvalStatus,
 
-      // optional
-      teacher_notes: attendance.teacherNotes,
       created_at: attendance.createdAt,
+      approval_status: attendance.approvalStatus,
+      teacher_notes: attendance.teacherNotes,
 
-      // join
-      class_name: classes.name,
       teacher_name: user.name,
+
+      // 💰 RATE
+      rate: classes.hourlyRate,
     })
     .from(attendance)
     .leftJoin(classes, eq(attendance.classId, classes.id))
     .leftJoin(user, eq(attendance.teacherId, user.id))
     .where(
-      isAdmin
-        ? undefined
-        : eq(attendance.teacherId, userId)
+      isAdmin ? undefined : eq(attendance.teacherId, userId)
     )
-    .orderBy(desc(attendance.createdAt))
-    .limit(20);
+    .orderBy(desc(attendance.createdAt));
 
   return data;
 }

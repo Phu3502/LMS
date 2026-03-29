@@ -1,161 +1,168 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // ================= TYPES =================
-type ApprovalStatus = "pending" | "approved";
-
-interface SalaryItem {
+type RecordType = {
   id: string;
   class_id: string;
   class_name: string;
+  teacher_name?: string;
+
   attendance_date: string;
   attendance_time: string;
-  created_at: string;
-  hourly_rate: number | null;
-  approval_status: ApprovalStatus;
-}
+  created_at: Date;
 
-interface SalaryResponse {
-  data: SalaryItem[];
-}
+  approval_status: "pending" | "approved" | "rejected";
+  teacher_notes?: string;
 
-// ================= UTILS =================
-const formatCurrency = (value?: number | null) => {
-  if (!value) return "-";
-  return new Intl.NumberFormat("vi-VN").format(value) + " ₫";
+  rate: number;
 };
 
-const getUniqueClasses = (data: SalaryItem[]) => {
-  return Array.from(
-    new Map(
-      data.map((item) => [
-        item.class_id,
-        { id: item.class_id, name: item.class_name },
-      ])
-    ).values()
-  );
+type Props = {
+  data: RecordType[];
+  isAdmin: boolean;
 };
 
-// ================= COMPONENT =================
-export default function SalaryTab() {
-  // filters
-  const [status, setStatus] = useState<ApprovalStatus>("pending");
-  const [month, setMonth] = useState("");
-  const [classId, setClassId] = useState("");
+export default function SalaryTab({ data, isAdmin }: Props) {
+  const [records, setRecords] = useState<RecordType[]>(data);
+  const [status, setStatus] = useState<"pending" | "approved" | "rejected">("pending");
 
-  // data
-  const [data, setData] = useState<SalaryItem[]>([]);
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [teacherFilter, setTeacherFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
-  // state
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<RecordType | null>(null);
+  const [adminNote, setAdminNote] = useState("");
 
-  // ================= FETCH =================
-  const fetchSalary = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const [openForm, setOpenForm] = useState(false);
 
-      const params = new URLSearchParams();
-      if (classId) params.append("classId", classId);
-      if (month) params.append("month", month);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const isFetchingRef = useRef(false);
 
-      const res = await fetch(`/api/salary?${params.toString()}`);
-
-      if (!res.ok) throw new Error("Fetch failed");
-
-      const json: SalaryResponse = await res.json();
-
-      setData(json.data ?? []);
-      setClasses(getUniqueClasses(json.data ?? []));
-    } catch (err: any) {
-      console.error(err);
-      setError("Không thể tải dữ liệu");
-    } finally {
-      setLoading(false);
-    }
-  }, [classId, month]);
-
+  // ================= POLLING =================
   useEffect(() => {
-    fetchSalary();
-  }, [fetchSalary]);
+    const interval = setInterval(async () => {
+      if (isFetchingRef.current) return;
 
-  // ================= DERIVED STATE =================
+      try {
+        isFetchingRef.current = true;
+        const res = await fetch("/api/attendance");
+        const result = await res.json();
+        setRecords(result.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        isFetchingRef.current = false;
+      }
+    }, 7000);
 
-  // summary (ALL DATA)
-  const summary = useMemo(() => {
-    let pending = 0;
-    let approved = 0;
+    return () => clearInterval(interval);
+  }, []);
 
-    for (const item of data) {
-      if (item.approval_status === "pending") pending++;
-      if (item.approval_status === "approved") approved++;
+  // ================= CLICK OUTSIDE =================
+  useEffect(() => {
+    const handleClick = (e: any) => {
+      if (!modalRef.current?.contains(e.target)) {
+        setSelected(null);
+      }
+    };
+
+    if (selected) {
+      document.addEventListener("mousedown", handleClick);
     }
 
-    return { pending, approved };
-  }, [data]);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [selected]);
 
-  // filtered table
-  const tableData = useMemo(() => {
-    return data
-      .filter((item) =>
-        status === "pending"
-          ? item.approval_status === "pending"
-          : item.approval_status === "approved"
+  // ================= FILTER =================
+  const filtered = records.filter((r) => {
+    if (r.approval_status !== status) return false;
+
+    if (isAdmin && teacherFilter) {
+      if (!r.teacher_name?.toLowerCase().includes(teacherFilter.toLowerCase())) {
+        return false;
+      }
+    }
+
+    const d = new Date(r.attendance_date);
+
+    if (fromDate && d < new Date(fromDate)) return false;
+    if (toDate && d > new Date(toDate)) return false;
+
+    return true;
+  });
+
+  // ================= COUNTS =================
+  const totalPending = records.filter(r => r.approval_status === "pending").length;
+  const totalApproved = records.filter(r => r.approval_status === "approved").length;
+  const totalRejected = records.filter(r => r.approval_status === "rejected").length;
+
+  // ================= ADMIN =================
+  const handleAdmin = async (status: "approved" | "rejected") => {
+    if (!selected) return;
+
+    setRecords(prev =>
+      prev.map(r =>
+        r.id === selected.id ? { ...r, approval_status: status } : r
       )
-      .map((item) => ({
-        ...item,
-        formattedDate: item.attendance_date,
-        formattedCreatedAt: new Date(item.created_at).toLocaleDateString(),
-        formattedRate: formatCurrency(item.hourly_rate),
-      }));
-  }, [data, status]);
+    );
 
-  // ================= HANDLERS =================
-  const handleReset = () => {
-    setMonth("");
-    setClassId("");
+    await fetch("/api/attendance", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: selected.id,
+        status,
+        note: adminNote,
+      }),
+    });
+
+    setSelected(null);
+    setAdminNote("");
   };
 
-  // ================= RENDER =================
   return (
     <div className="p-8">
+
       {/* HEADER */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-slate-800">
-          Bảng lương cá nhân
-        </h2>
-        <p className="text-slate-500 mt-1">
-          Theo dõi thu nhập từ các lớp học
-        </p>
+        <h2 className="text-2xl font-bold text-slate-800">Bảng lương cá nhân</h2>
+        <p className="text-slate-500 mt-1">Theo dõi thu nhập từ các lớp học</p>
       </div>
 
-      {/* FILTER */}
-      <div className="flex gap-4 mb-6">
-        <input
-          type="month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          className="border rounded-lg px-3 py-2"
-        />
+      {/* 🔥 ACTION */}
+      {!isAdmin && (
+        <div className="mb-6 flex justify-end">
+          <button
+            onClick={() => setOpenForm(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl shadow-md transition"
+          >
+            + Chấm công
+          </button>
+        </div>
+      )}
 
-        <select
-          value={classId}
-          onChange={(e) => setClassId(e.target.value)}
-          className="border rounded-lg px-3 py-2"
-        >
-          <option value="">Tất cả lớp</option>
-          {classes.map((cls) => (
-            <option key={cls.id} value={cls.id}>
-              {cls.name}
-            </option>
-          ))}
-        </select>
+      {/* FILTER */}
+      <div className="flex flex-wrap gap-4 mb-6">
+        {isAdmin && (
+          <input
+            placeholder="Tên giáo viên..."
+            value={teacherFilter}
+            onChange={(e) => setTeacherFilter(e.target.value)}
+            className="border rounded-lg px-3 py-2"
+          />
+        )}
+
+        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="border rounded-lg px-3 py-2"/>
+        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="border rounded-lg px-3 py-2"/>
 
         <button
-          onClick={handleReset}
+          onClick={() => {
+            setTeacherFilter("");
+            setFromDate("");
+            setToDate("");
+          }}
           className="px-4 py-2 border rounded-lg"
         >
           Reset
@@ -163,118 +170,252 @@ export default function SalaryTab() {
       </div>
 
       {/* SUMMARY */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 
-        <div
-          onClick={() => setStatus("pending")}
-          className={`bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg cursor-pointer transition-all ${
-            status === "pending" ? "ring-2 ring-amber-300 scale-[1.02]" : ""
-          }`}
-        >
+        <div onClick={() => setStatus("pending")}
+          className={`bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg cursor-pointer ${status==="pending" && "ring-2 ring-amber-300"}`}>
           <p className="text-amber-100 text-sm mb-1">Lương chờ duyệt</p>
-          <p className="text-3xl font-bold">{summary.pending}</p>
+          <p className="text-3xl font-bold">{totalPending}</p>
         </div>
 
-        <div
-          onClick={() => setStatus("approved")}
-          className={`bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg cursor-pointer transition-all ${
-            status === "approved" ? "ring-2 ring-emerald-300 scale-[1.02]" : ""
-          }`}
-        >
-          <p className="text-emerald-100 text-sm mb-1">
-            Tổng lương đã duyệt
-          </p>
-          <p className="text-3xl font-bold">{summary.approved}</p>
+        <div onClick={() => setStatus("approved")}
+          className={`bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg cursor-pointer ${status==="approved" && "ring-2 ring-emerald-300"}`}>
+          <p className="text-emerald-100 text-sm mb-1">Tổng lương đã duyệt</p>
+          <p className="text-3xl font-bold">{totalApproved}</p>
+        </div>
+
+        <div onClick={() => setStatus("rejected")}
+          className={`bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-6 text-white shadow-lg cursor-pointer ${status==="rejected" && "ring-2 ring-red-300"}`}>
+          <p className="text-red-100 text-sm mb-1">Công bị từ chối</p>
+          <p className="text-3xl font-bold">{totalRejected}</p>
         </div>
       </div>
 
       {/* TABLE */}
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-          <h3 className="text-lg font-bold text-slate-800">
-            Chi tiết chấm công
-          </h3>
-
-          {error && (
-            <button
-              onClick={fetchSalary}
-              className="text-sm text-red-500 underline"
-            >
-              Thử lại
-            </button>
-          )}
+        <div className="p-6 border-b">
+          <h3 className="text-lg font-bold text-slate-800">Chi tiết chấm công</h3>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
-                  Tên lớp
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
-                  Ngày dạy
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
-                  Thời gian
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
-                  Ngày chấm công
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
-                  Rate lương
-                </th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase">
-                  Trạng thái
-                </th>
+                <th className="px-6 py-4 w-[20%] text-left text-xs font-semibold text-slate-600 uppercase">Tên lớp</th>
+                {isAdmin && <th className="px-6 py-4 w-[15%] text-left text-xs font-semibold text-slate-600 uppercase">Giáo viên</th>}
+                <th className="px-6 py-4 w-[15%] text-left text-xs font-semibold text-slate-600 uppercase">Ngày dạy</th>
+                <th className="px-6 py-4 w-[15%] text-left text-xs font-semibold text-slate-600 uppercase">Thời gian</th>
+                <th className="px-6 py-4 w-[20%] text-left text-xs font-semibold text-slate-600 uppercase">Ngày chấm công</th>
+                <th className="px-6 py-4 w-[15%] text-left text-xs font-semibold text-slate-600 uppercase">Rate</th>
+                <th className="px-6 py-4 w-[15%] text-center text-xs font-semibold text-slate-600 uppercase">Trạng thái</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-10 text-slate-400">
-                    Đang tải dữ liệu...
+            <tbody className="divide-y">
+              {filtered.map(item => (
+                <tr key={item.id}
+                  onClick={() => setSelected(item)}
+                  className="hover:bg-slate-50 transition cursor-pointer">
+
+                  <td className="px-6 py-4 truncate">{item.class_name}</td>
+                  {isAdmin && <td className="px-6 py-4">{item.teacher_name || "-"}</td>}
+                  <td className="px-6 py-4">{item.attendance_date}</td>
+                  <td className="px-6 py-4">{item.attendance_time}</td>
+                  <td className="px-6 py-4">{new Date(item.created_at).toLocaleDateString()}</td>
+
+                  <td className="px-6 py-4 text-emerald-600 font-semibold">
+                    {Number.isFinite(item.rate)
+                      ? new Intl.NumberFormat("vi-VN").format(item.rate) + " ₫"
+                      : "—"}
+                  </td>
+
+                  <td className="px-6 py-4 text-center">
+                    <span className={`px-3 py-1 rounded-full text-xs ${
+                      item.approval_status === "approved"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : item.approval_status === "rejected"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-amber-100 text-amber-700"
+                    }`}>
+                      {item.approval_status}
+                    </span>
                   </td>
                 </tr>
-              ) : tableData.length > 0 ? (
-                tableData.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-800">
-                      {item.class_name}
-                    </td>
-                    <td className="px-6 py-4">{item.formattedDate}</td>
-                    <td className="px-6 py-4">{item.attendance_time}</td>
-                    <td className="px-6 py-4">{item.formattedCreatedAt}</td>
-                    <td className="px-6 py-4 font-semibold text-emerald-600">
-                      {item.formattedRate}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span
-                        className={`status-badge ${
-                          item.approval_status === "approved"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {item.approval_status === "approved"
-                          ? "Đã duyệt"
-                          : "Chờ duyệt"}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="text-center py-10 text-slate-500">
-                    {error ?? "Không có dữ liệu"}
-                  </td>
-                </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
+
+        {filtered.length === 0 && (
+          <div className="text-center py-10 text-slate-500">
+            Không có dữ liệu
+          </div>
+        )}
       </div>
+
+      {/* CREATE FORM */}
+      {openForm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
+
+            <h3 className="text-lg font-bold mb-4 text-slate-800">
+              Tạo chấm công
+            </h3>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.target as HTMLFormElement;
+                const formData = new FormData(form);
+
+                const payload = {
+                  class_id: formData.get("class_id"),
+                  attendance_date: formData.get("date"),
+                  attendance_time: `${formData.get("start_time")} - ${formData.get("end_time")}`,
+                  teacher_notes: formData.get("note"),
+                };
+
+                const res = await fetch("/api/attendance", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                });
+
+                const newItem = await res.json();
+                setRecords(prev => [newItem, ...prev]);
+                setOpenForm(false);
+              }}
+              className="space-y-4"
+            >
+
+              {/* 🔥 CLASS SELECT (SEARCHABLE) */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Tên lớp
+                </label>
+
+                <input
+                  list="class-list"
+                  name="class_id"
+                  placeholder="Nhập hoặc chọn lớp..."
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 mt-1 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+
+                <datalist id="class-list">
+                  {records.map((r) => (
+                    <option >
+                      {r.class_name}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+
+              {/* DATE */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Ngày dạy
+                </label>
+
+                <input
+                  type="date"
+                  name="date"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 mt-1 text-slate-800"
+                  required
+                />
+              </div>
+
+              {/* TIME RANGE */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Thời gian
+                </label>
+
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="time"
+                    name="start_time"
+                    className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-slate-800"
+                    required
+                  />
+                  <span className="flex items-center text-slate-500">→</span>
+                  <input
+                    type="time"
+                    name="end_time"
+                    className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-slate-800"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* NOTE */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">
+                  Nhận xét
+                </label>
+
+                <textarea
+                  name="note"
+                  placeholder="Nhập nhận xét (nếu có)..."
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 mt-1 text-slate-800"
+                />
+              </div>
+
+              {/* ACTION */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition"
+                >
+                  Chấm công
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOpenForm(false)}
+                  className="flex-1 border border-slate-300 py-2 rounded-lg hover:bg-slate-50 text-slate-800 transition"
+                >
+                  Huỷ
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL MODAL */}
+      {selected && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div ref={modalRef} className="bg-white rounded-2xl p-6 w-[420px] shadow-xl">
+
+            <h3 className="text-lg font-bold mb-4">Chi tiết chấm công</h3>
+
+            <p><b>Lớp:</b> {selected.class_name}</p>
+            {isAdmin && <p><b>GV:</b> {selected.teacher_name}</p>}
+            <p><b>Ngày:</b> {selected.attendance_date}</p>
+            <p><b>Giờ:</b> {selected.attendance_time}</p>
+            <p><b>Rate:</b> {selected.rate}</p>
+
+            <div className="mt-2 bg-slate-50 p-3 rounded">
+              {selected.teacher_notes || "Không có"}
+            </div>
+
+            {isAdmin && (
+              <>
+                <textarea value={adminNote} onChange={(e)=>setAdminNote(e.target.value)} className="w-full border p-2 mt-3"/>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={()=>handleAdmin("approved")} className="flex-1 bg-green-500 text-white p-2 rounded">Duyệt</button>
+                  <button onClick={()=>handleAdmin("rejected")} className="flex-1 bg-red-500 text-white p-2 rounded">Từ chối</button>
+                </div>
+              </>
+            )}
+
+            <button onClick={()=>setSelected(null)} className="w-full mt-4 border p-2 rounded">Đóng</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

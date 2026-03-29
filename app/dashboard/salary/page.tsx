@@ -1,15 +1,26 @@
-// app/dashboard/salary/page.tsx
 import { getSession } from "@/lib/getSession";
-import { getTeacherClasses } from "@/lib/queries/getTeacherClasses";
+import { getSalaryData } from "@/lib/queries/getSalaryData";
 import SalaryTab from "@/components/dashboard/SalaryTab";
+import { redirect } from "next/navigation";
+import { getClasses } from "@/lib/queries/getClassess";
 
 export default async function Page() {
   const session = await getSession();
 
-  const classes = await getTeacherClasses(
-    session.user.id,
-    session.user.role
-  );
+  if (!session) {
+    redirect("/login");
+  }
 
-  return <SalaryTab classes={classes} />;
+  const [data, classes] = await Promise.all([
+    getSalaryData(session.user.id, session.user.role),
+    getClasses(),
+  ]);
+
+  return (
+    <SalaryTab
+      data={data}
+      classes={classes}
+      isAdmin={session.user.role === "admin"}
+    />
+  );
 }

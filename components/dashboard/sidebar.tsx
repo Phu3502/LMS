@@ -28,12 +28,12 @@ export default function Sidebar({ session }: any) {
       path: "/dashboard/calendar",
       icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
     },
-    {
-      id: "attendance",
-      label: "Chấm công",
-      path: "/dashboard/attendance",
-      icon: "M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2",
-    },
+    // {
+    //   id: "attendance",
+    //   label: "Chấm công",
+    //   path: "/dashboard/attendance",
+    //   icon: "M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2",
+    // },
     {
       id: "salary",
       label: "Bảng lương",
@@ -180,7 +180,7 @@ export default function Sidebar({ session }: any) {
           <Logout />
         </div>
 
-        <div className="p-4 border-t border-white/10">
+        {/* <div className="p-4 border-t border-white/10">
           <div className="glass-effect rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-blue-200 text-xs">
@@ -192,7 +192,7 @@ export default function Sidebar({ session }: any) {
               <div className="bg-gradient-to-r from-amber-400 to-orange-500 h-2 rounded-full w-0" />
             </div>
           </div>
-        </div>
+        </div> */}
       </aside>
     </>
   );
