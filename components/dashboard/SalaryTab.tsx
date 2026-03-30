@@ -131,7 +131,7 @@ export default function SalaryTab({ data, isAdmin }: Props) {
         <p className="text-slate-500 mt-1">Theo dõi thu nhập từ các lớp học</p>
       </div>
 
-      {/* 🔥 ACTION */}
+      {/* ACTION */}
       {!isAdmin && (
         <div className="mb-6 flex justify-end">
           <button
@@ -144,7 +144,7 @@ export default function SalaryTab({ data, isAdmin }: Props) {
       )}
 
       {/* FILTER */}
-      <div className="flex flex-wrap gap-4 mb-6">
+      <div className="flex flex-wrap gap-4 mb-6 text-zinc-800">
         {isAdmin && (
           <input
             placeholder="Tên giáo viên..."
@@ -215,7 +215,7 @@ export default function SalaryTab({ data, isAdmin }: Props) {
               {filtered.map(item => (
                 <tr key={item.id}
                   onClick={() => setSelected(item)}
-                  className="hover:bg-slate-50 transition cursor-pointer">
+                  className="hover:bg-slate-50 transition cursor-pointer text-zinc-800">
 
                   <td className="px-6 py-4 truncate">{item.class_name}</td>
                   {isAdmin && <td className="px-6 py-4">{item.teacher_name || "-"}</td>}
@@ -288,7 +288,7 @@ export default function SalaryTab({ data, isAdmin }: Props) {
               className="space-y-4"
             >
 
-              {/* 🔥 CLASS SELECT (SEARCHABLE) */}
+              {/* CLASS SELECT (SEARCHABLE) */}
               <div>
                 <label className="text-sm font-medium text-slate-700">
                   Tên lớp
@@ -356,7 +356,7 @@ export default function SalaryTab({ data, isAdmin }: Props) {
 
                 <textarea
                   name="note"
-                  placeholder="Nhập nhận xét (nếu có)..."
+                  placeholder="Nhập nhận xét..."
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 mt-1 text-slate-800"
                 />
               </div>
@@ -387,23 +387,24 @@ export default function SalaryTab({ data, isAdmin }: Props) {
       {/* DETAIL MODAL */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div ref={modalRef} className="bg-white rounded-2xl p-6 w-[420px] shadow-xl">
+          <div ref={modalRef} className="bg-white rounded-2xl p-6 w-[420px] shadow-xl text-zinc-800">
 
             <h3 className="text-lg font-bold mb-4">Chi tiết chấm công</h3>
 
             <p><b>Lớp:</b> {selected.class_name}</p>
             {isAdmin && <p><b>GV:</b> {selected.teacher_name}</p>}
             <p><b>Ngày:</b> {selected.attendance_date}</p>
-            <p><b>Giờ:</b> {selected.attendance_time}</p>
+            <p><b>Thời:</b> {selected.attendance_time}</p>
             <p><b>Rate:</b> {selected.rate}</p>
 
             <div className="mt-2 bg-slate-50 p-3 rounded">
-              {selected.teacher_notes || "Không có"}
+              <b>Nhận xét:</b><br/>
+              {selected.teacher_notes || "Chưa có"}
             </div>
 
             {isAdmin && (
               <>
-                <textarea value={adminNote} onChange={(e)=>setAdminNote(e.target.value)} className="w-full border p-2 mt-3"/>
+                <textarea value={adminNote} onChange={(e)=>setAdminNote(e.target.value)} className="w-full border p-2 mt-3 placeholder:text-slate-500" placeholder="Lý do (nếu từ chối)..."/>
                 <div className="flex gap-2 mt-2">
                   <button onClick={()=>handleAdmin("approved")} className="flex-1 bg-green-500 text-white p-2 rounded">Duyệt</button>
                   <button onClick={()=>handleAdmin("rejected")} className="flex-1 bg-red-500 text-white p-2 rounded">Từ chối</button>
