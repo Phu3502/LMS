@@ -2,10 +2,20 @@ import { db } from "@/src/index";
 import { attendance, classes, user } from "@/src/db/schema";
 import { eq, desc } from "drizzle-orm";
 
+
+type ApprovalStatus = "pending" | "approved" | "rejected";
+
+
+function normalizeStatus(value: string | null): ApprovalStatus {
+  if (value === "approved" || value === "rejected") return value;
+  return "pending";
+}
+
+
 export async function getSalaryData(userId: string, role: string) {
   const isAdmin = role === "admin";
 
-  const data = await db
+  const baseQuery = db
     .select({
       id: attendance.id,
       class_id: attendance.classId,
@@ -19,17 +29,30 @@ export async function getSalaryData(userId: string, role: string) {
       teacher_notes: attendance.teacherNotes,
 
       teacher_name: user.name,
-
-      // 💰 RATE
       rate: classes.hourlyRate,
     })
     .from(attendance)
     .leftJoin(classes, eq(attendance.classId, classes.id))
-    .leftJoin(user, eq(attendance.teacherId, user.id))
-    .where(
-      isAdmin ? undefined : eq(attendance.teacherId, userId)
-    )
-    .orderBy(desc(attendance.createdAt));
+    .leftJoin(user, eq(attendance.teacherId, user.id));
 
-  return data;
+  const query = isAdmin
+    ? baseQuery
+    : baseQuery.where(eq(attendance.teacherId, userId));
+
+  const data = await query.orderBy(desc(attendance.createdAt));
+
+
+  return data.map((item) => ({
+    ...item,
+
+    class_name: item.class_name ?? "",
+
+    teacher_name: item.teacher_name ?? undefined,
+
+    rate: item.rate ?? 0,
+
+    approval_status: normalizeStatus(item.approval_status),
+
+    teacher_notes: item.teacher_notes ?? undefined,
+  }));
 }

@@ -68,7 +68,7 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
       hourlyRate: Number(formData.get("hourlyRate")),
     };
 
-    await fetch("/api/classes", {
+    const res = await fetch("/api/classes", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -76,7 +76,15 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
       body: JSON.stringify(data),
     });
 
+    if (!res.ok) {
+      alert("Tạo lớp thất bại");
+      return;
+    }
+
     onOpenChange(false);
+
+    // ✅ FIX: refresh UI
+    location.reload();
   };
 
   return (
@@ -91,7 +99,6 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* NAME */}
           <div>
             <label className="text-sm font-medium text-slate-600">
               Tên lớp
@@ -103,7 +110,6 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
             />
           </div>
 
-          {/* DESCRIPTION */}
           <div>
             <label className="text-sm font-medium text-slate-600">
               Mô tả
@@ -114,7 +120,6 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
             />
           </div>
 
-          {/* TEACHER COMBOBOX */}
           <div ref={dropdownRef} className="relative">
             <label className="text-sm font-medium text-slate-600">
               Giáo viên
@@ -158,69 +163,24 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
             )}
           </div>
 
-          {/* TIME ROW */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-slate-600">
-                Thứ
-              </label>
-              <input
-                name="weekday"
-                className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-slate-600">
-                Thời gian
-              </label>
-              <input
-                name="time"
-                className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            <input name="weekday" className="border rounded-lg px-3 py-2" />
+            <input name="time" className="border rounded-lg px-3 py-2" />
           </div>
 
-          {/* DATE RANGE */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="border rounded-xl p-3 bg-blue-50">
-              <label className="text-xs text-blue-600 font-semibold">
-                Ngày bắt đầu
-              </label>
-              <input
-                name="startDate"
-                type="date"
-                className="mt-1 w-full bg-transparent outline-none text-slate-800"
-              />
-            </div>
-
-            <div className="border rounded-xl p-3 bg-rose-50">
-              <label className="text-xs text-rose-600 font-semibold">
-                Ngày kết thúc
-              </label>
-              <input
-                name="endDate"
-                type="date"
-                className="mt-1 w-full bg-transparent outline-none text-slate-800"
-              />
-            </div>
+            <input type="date" name="startDate" className="border p-2 rounded-xl" />
+            <input type="date" name="endDate" className="border p-2 rounded-xl" />
           </div>
 
-          {/* RATE */}
-          <div>
-            <label className="text-sm font-medium text-slate-600">
-              Lương / buổi (VNĐ)
-            </label>
-            <input
-              name="hourlyRate"
-              type="number"
-              className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
+          <input
+            name="hourlyRate"
+            type="number"
+            className="w-full border rounded-lg px-3 py-2"
+            required
+          />
 
-          {/* SUBMIT */}
-          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl transition font-medium">
+          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl">
             Tạo lớp
           </button>
         </form>

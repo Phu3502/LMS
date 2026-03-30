@@ -6,7 +6,7 @@ export async function getTeacherClasses(
   userId: string,
   role: string
 ) {
-  const query = db
+  const baseQuery = db
     .select({
       id: classes.id,
       name: classes.name,
@@ -17,13 +17,20 @@ export async function getTeacherClasses(
       teacherName: user.name,
     })
     .from(classes)
-    .leftJoin(user, eq(classes.teacherId, user.id))
+    .leftJoin(user, eq(classes.teacherId, user.id));
+
+  const query =
+    role === "admin"
+      ? baseQuery
+      : baseQuery.where(eq(classes.teacherId, userId));
+
+  const data = await query
     .orderBy(classes.startDate)
-    .limit(20); 
+    .limit(20);
 
-  if (role !== "admin") {
-    query.where(eq(classes.teacherId, userId));
-  }
-
-  return await query;
+  // 🔥 FIX NULL → UNDEFINED
+  return data.map((cls) => ({
+    ...cls,
+    teacherName: cls.teacherName ?? undefined,
+  }));
 }
