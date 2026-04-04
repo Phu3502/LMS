@@ -1,6 +1,6 @@
 import { getSession } from "@/lib/getSession";
 import { getSalaryData } from "@/lib/queries/getSalaryData";
-import SalaryTab from "@/components/dashboard/SalaryTab";
+import SalaryTab from "@/components/dashboard/AttendanceTab";
 import { redirect } from "next/navigation";
 import { getClasses } from "@/lib/queries/getClassess";
 

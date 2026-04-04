@@ -105,10 +105,6 @@ export default function DashboardTab({ classes, role }: any) {
                   <h3 className="text-lg font-semibold">{cls.name}</h3>
 
                   <p className="text-sm text-slate-500">
-                    {cls.studentCount || 0} học sinh
-                  </p>
-
-                  <p className="text-sm text-slate-500">
                     Giáo viên: {cls.teacherName || "Chưa có giáo viên"}
                   </p>
 

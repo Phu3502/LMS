@@ -28,18 +28,18 @@ export default function Sidebar({ session }: any) {
       path: "/dashboard/calendar",
       icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
     },
-    // {
-    //   id: "attendance",
-    //   label: "Chấm công",
-    //   path: "/dashboard/attendance",
-    //   icon: "M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2",
-    // },
     {
-      id: "salary",
-      label: "Bảng lương",
-      path: "/dashboard/salary",
+      id: "attendance",
+      label: "Chấm công",
+      path: "/dashboard/attendance",
       icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2",
     },
+    // {
+    //   id: "salary",
+    //   label: "Bảng lương",
+    //   path: "/dashboard/salary",
+    //   icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2",
+    // },
     ...(isAdmin
       ? [
           {

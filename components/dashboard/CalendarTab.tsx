@@ -10,6 +10,13 @@ function getColorById(id: string) {
     "bg-purple-500",
     "bg-red-500",
     "bg-orange-500",
+    "bg-pink-500",
+    "bg-indigo-500",
+    "bg-yellow-500",
+    "bg-teal-500",
+    "bg-cyan-500",
+    "bg-emerald-500",
+    "bg-rose-500",
   ];
 
   let hash = 0;
@@ -51,10 +58,13 @@ export default function CalendarTab({ classes }: Props) {
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
+  const uniqueClasses = [
+    ...new Map(classes.map((c) => [c.id, c])).values(),
+  ];
+
   const renderCells = () => {
     const cells = [];
 
-    // ô trống đầu tháng
     for (let i = 0; i < firstDayOfMonth; i++) {
       cells.push(<div key={`empty-${i}`} />);
     }
@@ -83,43 +93,71 @@ export default function CalendarTab({ classes }: Props) {
       cells.push(
         <div
           key={day}
-          className={`min-h-[110px] border rounded-xl p-2 transition ${
+          className={`min-h-[80px] sm:min-h-[110px] border rounded-xl p-1.5 sm:p-2 
+          transition-all duration-200 cursor-pointer active:scale-[0.98]
+          ${
             isToday
-              ? "bg-blue-50 border-blue-500"
+              ? "bg-blue-50 border-blue-500 shadow-sm ring-2 ring-blue-400"
               : "bg-white hover:bg-slate-50"
           }`}
         >
-          {/* Day number */}
+          {/* DAY */}
           <div
-            className={`text-sm font-semibold ${
+            className={`text-[11px] sm:text-sm font-semibold mb-1 ${
               isToday ? "text-blue-600" : "text-zinc-700"
             }`}
           >
             {day}
           </div>
 
-          {/* Events */}
-          <div className="mt-2 flex flex-col gap-1">
-            {events.map((cls) => (
-              <div
-                key={cls.id}
-                className={`rounded-md px-2 py-1 text-white text-xs shadow ${getColorById(
-                  cls.id
-                )}`}
-              >
-                <div className="font-medium truncate">{cls.name}</div>
+          {/* EVENTS */}
+          <div className="flex flex-col gap-1">
+            {/* MOBILE DOT */}
+            <div className="flex flex-wrap gap-1 sm:hidden">
+              {events.slice(0, 4).map((cls) => (
+                <div
+                  key={cls.id}
+                  className={`w-2.5 h-2.5 rounded-full shadow-sm 
+                  ring-1 ring-white transition-transform duration-150
+                  ${getColorById(cls.id)}`}
+                />
+              ))}
 
-                <div className="opacity-90 text-[11px]">
-                  ⏰ {cls.time}
+              {events.length > 4 && (
+                <div className="text-[9px] text-zinc-500">
+                  +{events.length - 4}
                 </div>
+              )}
+            </div>
 
-                {cls.teacherName && (
-                  <div className="opacity-80 text-[10px] truncate">
-                    👨‍🏫 {cls.teacherName}
+            {/* DESKTOP */}
+            <div className="hidden sm:flex sm:flex-col sm:gap-1">
+              {events.slice(0, 2).map((cls) => (
+                <div
+                  key={cls.id}
+                  className={`rounded-md px-1.5 py-1 text-white text-xs 
+                  shadow-sm truncate ${getColorById(cls.id)}`}
+                >
+                  <div className="font-medium truncate">{cls.name}</div>
+
+                  <div className="opacity-90 text-[11px]">
+                    ⏰ {cls.time}
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {cls.teacherName && (
+                    <div className="opacity-80 text-[10px] truncate">
+                      👨‍🏫 {cls.teacherName}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {events.length > 2 && (
+                <div className="text-[11px] text-zinc-500">
+                  +{events.length - 2} nữa
+                </div>
+              )}
+            </div>
           </div>
         </div>
       );
@@ -129,17 +167,17 @@ export default function CalendarTab({ classes }: Props) {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-3 sm:p-4">
       {/* HEADER */}
-      <div className="flex items-center justify-between mb-4 text-zinc-800">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
         <button
           onClick={prevMonth}
-          className="p-2 rounded-lg hover:bg-slate-100"
+          className="p-2 rounded-full hover:bg-slate-100 active:scale-95 transition text-zinc-700"
         >
-          <ChevronLeft />
+          <ChevronLeft size={20} />
         </button>
 
-        <h2 className="font-semibold text-lg text-zinc-800">
+        <h2 className="font-semibold text-base sm:text-lg text-center text-zinc-800">
           {currentDate.toLocaleString("vi-VN", {
             month: "long",
             year: "numeric",
@@ -148,14 +186,32 @@ export default function CalendarTab({ classes }: Props) {
 
         <button
           onClick={nextMonth}
-          className="p-2 rounded-lg hover:bg-slate-100 text-zinc-800"
+          className="p-2 rounded-full hover:bg-slate-100 active:scale-95 transition text-zinc-700"
         >
-          <ChevronRight />
+          <ChevronRight size={20} />
         </button>
       </div>
 
-      {/* WEEKDAY HEADER */}
-      <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium mb-2 text-zinc-500">
+      {/* MOBILE LEGEND */}
+      <div className="sm:hidden mb-2 overflow-x-auto no-scrollbar">
+        <div className="flex gap-3 w-max px-1">
+          {uniqueClasses.map((cls) => (
+            <div
+              key={cls.id}
+              className="flex items-center gap-1.5 text-[11px] whitespace-nowrap 
+              bg-white px-2 py-1 rounded-full shadow-sm border"
+            >
+              <div
+                className={`w-2.5 h-2.5 rounded-full ${getColorById(cls.id)}`}
+              />
+              <span className="text-zinc-700">{cls.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* WEEKDAY */}
+      <div className="grid grid-cols-7 text-[11px] sm:text-sm font-medium text-center text-zinc-500 mb-1 sm:mb-2">
         <div>CN</div>
         <div>T2</div>
         <div>T3</div>
@@ -166,7 +222,7 @@ export default function CalendarTab({ classes }: Props) {
       </div>
 
       {/* GRID */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1 sm:gap-2">
         {renderCells()}
       </div>
     </div>

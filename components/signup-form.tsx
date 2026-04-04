@@ -2,9 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-  FieldGroup,
-} from "@/components/ui/field"
+import { FieldGroup } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { signUp } from "../server/user"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -19,9 +17,8 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
 import React from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, Eye, EyeOff } from "lucide-react"
 
 const formSchema = z.object({
   username: z.string().min(3, "Tên người dùng phải có ít nhất 3 ký tự"),
@@ -32,12 +29,11 @@ const formSchema = z.object({
 
 export function SignupForm({
   className,
-  isAdminMode = false,
   ...props
-}: React.ComponentProps<"form"> & { isAdminMode?: boolean }) {
+}: React.ComponentProps<"form">) {
 
   const [isLoading, setIsLoading] = React.useState(false)
-  const router = useRouter()
+  const [showPassword, setShowPassword] = React.useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,83 +46,67 @@ export function SignupForm({
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true)
-
-    let success = false
-    let message = ""
+    if (isLoading) return
 
     try {
-      if (isAdminMode) {
-        // ✅ ADMIN → gọi API (KHÔNG login)
-        const response = await fetch("/api/admin/create-user", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: values.email,
-            password: values.password,
-            name: values.username,
-            role: values.role,
-          }),
-        })
+      setIsLoading(true)
 
-        const data = await response.json()
-        success = response.ok
-        message = data.message || (success ? "Tạo tài khoản thành công" : "Có lỗi xảy ra")
+      const res = await signUp(
+        values.email,
+        values.password,
+        values.username,
+        values.role
+      )
 
-      } else {
-        // ✅ USER → đăng ký bình thường (có login)
-        const res = await signUp(
-          values.email,
-          values.password,
-          values.username,
-          values.role
-        )
-
-        success = res.success
-        message = res.message as string
+      if (!res) {
+        toast.error("Có lỗi xảy ra, vui lòng thử lại")
+        return
       }
+
+      const { success, message, code } = res
 
       if (success) {
-        toast.success(message)
+        toast.success(message || "Tạo tài khoản thành công")
 
-        if (!isAdminMode) {
-          router.push("/dashboard")
-        } else {
-          form.reset()
+        form.reset()
+      } else {
+        if (code === "EMAIL_EXISTS") {
+          form.setError("email", {
+            message: "Email đã tồn tại",
+          })
+          form.setFocus("email")
         }
 
-      } else {
-        toast.error(message)
+        toast.error(message || "Tạo tài khoản thất bại")
       }
 
-    } catch (err) {
-      toast.error("Có lỗi xảy ra")
+    } catch (error) {
+      console.error(error)
+      toast.error("Lỗi hệ thống, vui lòng thử lại")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn("flex flex-col gap-6", className)}
+        className={cn("flex flex-col gap-6 transition-all duration-300", className)}
         {...props}
       >
         <FieldGroup>
+          {/* HEADER */}
           <div className="flex flex-col items-center gap-1 text-center">
-            <h1 className="text-2xl font-bold">
-              {isAdminMode ? "Tạo tài khoản" : "Đăng ký tài khoản"}
+            <h1 className="text-2xl font-bold tracking-tight">
+              Tạo tài khoản
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isAdminMode
-                ? "Tạo tài khoản cho giáo viên hoặc admin"
-                : "Nhập thông tin để đăng ký"}
+              Nhập thông tin để tạo tài khoản
             </p>
           </div>
 
+          {/* USERNAME */}
           <FormField
             control={form.control}
             name="username"
@@ -134,13 +114,19 @@ export function SignupForm({
               <FormItem>
                 <FormLabel>Tên người dùng</FormLabel>
                 <FormControl>
-                  <Input placeholder="Tên người dùng" {...field} />
+                  <Input
+                    placeholder="Nguyễn Văn A"
+                    disabled={isLoading}
+                    className="focus-visible:ring-2 focus-visible:ring-blue-500 transition"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
+          {/* EMAIL */}
           <FormField
             control={form.control}
             name="email"
@@ -148,56 +134,84 @@ export function SignupForm({
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="m@example.com" {...field} />
+                  <Input
+                    placeholder="email@example.com"
+                    disabled={isLoading}
+                    className="focus-visible:ring-2 focus-visible:ring-blue-500 transition"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
+          {/* PASSWORD */}
           <FormField
             control={form.control}
             name="password"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Mật khẩu</FormLabel>
+
                 <FormControl>
-                  <Input type="password" {...field} />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      disabled={isLoading}
+                      className="pr-10 focus-visible:ring-2 focus-visible:ring-blue-500 transition"
+                      {...field}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 transition"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </FormControl>
+
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* ROLE (GIỮ LẠI) */}
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Vai trò</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    disabled={isLoading}
+                    className="w-full border rounded-lg px-3 py-2 
+                    focus:ring-2 focus:ring-blue-500 transition 
+                    bg-white"
+                  >
+                    <option value="teacher">Giáo viên</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {isAdminMode && (
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Vai trò</FormLabel>
-                  <FormControl>
-                    <select
-                      {...field}
-                      className="w-full border rounded-lg px-3 py-2"
-                    >
-                      <option value="teacher">Giáo viên</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-
-          <Button type="submit" disabled={isLoading}>
+          {/* BUTTON */}
+          <Button
+            type="submit"
+            className="w-full transition-all active:scale-[0.98]"
+            disabled={isLoading}
+          >
             {isLoading ? (
               <Loader2 className="size-4 animate-spin" />
-            ) : isAdminMode ? (
-              "Tạo tài khoản"
             ) : (
-              "Đăng ký"
+              "Tạo tài khoản"
             )}
           </Button>
         </FieldGroup>

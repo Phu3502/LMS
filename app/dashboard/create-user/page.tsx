@@ -1,11 +1,8 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import CreateUserTab from "@/components/dashboard/CreateUserTab";
+import { getSession } from "@/lib/getSession";
 
 export default async function Page() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   return <CreateUserTab session={session} />;
 }

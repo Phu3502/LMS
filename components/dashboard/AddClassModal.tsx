@@ -57,14 +57,44 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
 
+    const startDateStr = formData.get("startDate") as string;
+    const numSessions = Number(formData.get("numSessions"));
+
+    if (!startDateStr || !numSessions) {
+      alert("Thiếu ngày bắt đầu hoặc số buổi");
+      return;
+    }
+
+    const startDate = new Date(startDateStr);
+
+    // ✅ Lấy weekday (0 = CN, 1 = T2,...)
+    const weekdayIndex = startDate.getDay();
+
+    const weekdayMap = [
+      "Chủ nhật",
+      "Thứ 2",
+      "Thứ 3",
+      "Thứ 4",
+      "Thứ 5",
+      "Thứ 6",
+      "Thứ 7",
+    ];
+
+    const weekday = weekdayMap[weekdayIndex];
+
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + (numSessions - 1) * 7);
+
     const data = {
       name: formData.get("name"),
       description: formData.get("description"),
       teacherId: selectedTeacher.id,
-      weekday: formData.get("weekday"),
+
+      weekday,
+      startDate,
+      endDate,
+
       time: formData.get("time"),
-      startDate: formData.get("startDate"),
-      endDate: formData.get("endDate"),
       hourlyRate: Number(formData.get("hourlyRate")),
     };
 
@@ -82,8 +112,6 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
     }
 
     onOpenChange(false);
-
-    // ✅ FIX: refresh UI
     location.reload();
   };
 
@@ -100,30 +128,32 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
         <form onSubmit={handleSubmit} className="space-y-5">
 
           <div>
-            <label className="text-sm font-medium text-slate-600">
-              Tên lớp
-            </label>
             <input
               name="name"
-              className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-slate-400"
+              placeholder="Tên lớp"
               required
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-600">
-              Mô tả
-            </label>
+            <input
+              name="numSessions"
+              className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-slate-400"
+              placeholder="Số buổi học"
+              required
+            />
+          </div>
+
+          <div>
             <input
               name="description"
-              className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-slate-400"
+              placeholder="Mô tả"
             />
           </div>
 
           <div ref={dropdownRef} className="relative">
-            <label className="text-sm font-medium text-slate-600">
-              Giáo viên
-            </label>
 
             <input
               type="text"
@@ -162,21 +192,17 @@ export default function AddClassModal({ open, onOpenChange }: Props) {
               </div>
             )}
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <input name="weekday" className="border rounded-lg px-3 py-2" />
-            <input name="time" className="border rounded-lg px-3 py-2" />
-          </div>
-
+            
           <div className="grid grid-cols-2 gap-4">
             <input type="date" name="startDate" className="border p-2 rounded-xl" />
-            <input type="date" name="endDate" className="border p-2 rounded-xl" />
+            <input type="time" name="time" className="border rounded-lg px-3 py-2 placeholder:text-slate-400" placeholder="Thời gian" />
           </div>
 
           <input
             name="hourlyRate"
             type="number"
-            className="w-full border rounded-lg px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 placeholder:text-slate-400"
+            placeholder="Rate / giờ (VNĐ)"
             required
           />
 

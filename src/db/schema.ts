@@ -252,8 +252,8 @@ export const attendance = pgTable(
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
 
-    approvalStatus: text("approval_status").default("pending"),
-    paymentStatus: text("payment_status").default("unpaid"),
+    approvalStatus: text("approval_status").default("pending").notNull(),
+    paymentStatus: text("payment_status").default("unpaid").notNull(),
   },
   (table) => ({
     teacherIdx: index("attendance_teacher_idx").on(table.teacherId),
