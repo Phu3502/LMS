@@ -207,7 +207,7 @@ export default function SalaryTab({ data, classes, isAdmin }: Props) {
       {/* ================= MODAL ================= */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-6 w-[400px] shadow-xl space-y-4">
+          <div className="bg-white rounded-2xl p-6 w-[400px] shadow-xl space-y-4 text-zinc-800">
 
             <h3 className="text-lg font-bold">Chi tiết chấm công</h3>
 
@@ -216,7 +216,12 @@ export default function SalaryTab({ data, classes, isAdmin }: Props) {
               {isAdmin && <div><b>GV:</b> {selected.teacher_name}</div>}
               <div><b>Ngày:</b> {selected.attendance_date}</div>
               <div><b>Giờ:</b> {selected.attendance_time}</div>
-              <div><b>Trạng thái:</b> {selected.approval_status}</div>
+              <div>
+                <b>Trạng thái:</b> 
+                <span className={`px-3 py-1 rounded-full text-xs ${getStatusColor(selected.approval_status)}`}>
+                    {selected.approval_status}
+                </span>
+              </div>
             </div>
 
             {/* ADMIN */}
